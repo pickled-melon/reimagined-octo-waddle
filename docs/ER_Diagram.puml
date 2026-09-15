@@ -1,0 +1,118 @@
+@startuml "Модель данных в нотации Мартина"
+
+entity "User" as user {
+    * id : integer <<PK>>
+    --
+    * last_name : text
+    * first_name : text
+    patronymic_name : text
+}
+
+entity "Teacher" as teacher {
+    * id : integer <<PK>>
+    * user_id : integer <<FK, UNIQUE>>
+}
+
+entity "StudyYear" as year {
+    * id : integer <<PK>>
+    --
+    * year : integer
+    * max_weekly_hours : integer
+    * max_daily_hours : integer
+}
+
+entity "StudyGroup" as group {
+    * id : integer <<PK>>
+    * study_year_id : integer <<FK>>
+    * parent_id : integer <<FK, NULL>>
+    --
+    * name : text
+    * students_count : integer
+    letter : char
+    * type : text
+    subgroup_number : char
+}
+
+entity "Subject" as subject {
+    * id : integer <<PK>>
+    --
+    * title : text
+    * type : text
+}
+
+entity "Classroom" as classroom {
+    * id : integer <<PK>>
+    --
+    * number : text
+    * capacity : integer
+}
+
+entity "BellSchedule" as bell {
+    * id : integer <<PK>>
+    --
+    * lesson_number : integer
+    * start_time : time
+    * end_time : time
+}
+
+entity "Workload" as workload {
+    * id : integer <<PK>>
+    * teacher_id : integer <<FK>>
+    * subject_id : integer <<FK>>
+    * study_group_id : integer <<FK>>
+    --
+    * hours_count : integer
+}
+
+entity "Lesson" as lesson {
+    * id : integer <<PK>>
+    * workload_id : integer <<FK>>
+    * classroom_id : integer <<FK>>
+    * bell_schedule_id : integer <<FK>>
+    --
+    * week_day : integer
+    * is_test : boolean
+}
+
+entity "Difficulty" as difficulty {
+    * study_year_id : integer <<FK>>
+    * subject_id : integer <<FK>>
+    --
+    * points : integer
+}
+
+entity "TeacherSubject" as teacher_subject {
+    * teacher_id : integer <<FK>>
+    * subject_id : integer <<FK>>
+}
+
+entity "SubjectClassroom" as subject_classroom {
+    * subject_id : integer <<FK>>
+    * classroom_id : integer <<FK>>
+}
+
+
+user |o--|| teacher
+
+teacher ||--o{ workload
+subject ||--o{ workload
+group ||--o{ workload
+
+workload ||--o{ lesson
+classroom ||--o{ lesson
+bell ||--o{ lesson
+
+group |o--o{ group
+
+year ||--o{ group
+
+year ||--o{ difficulty
+subject ||--o{ difficulty
+
+teacher ||--o{ teacher_subject
+subject ||--o{ teacher_subject
+
+subject ||--o{ subject_classroom
+classroom ||--o{ subject_classroom
+
+@enduml
