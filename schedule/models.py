@@ -72,30 +72,27 @@ class BellSchedule(models.Model):
         return f"{self.lesson_number}-й урок ({self.start_time:%H:%M}–{self.end_time:%H:%M})"
 
 
-class Teacher(models.Model):
-    user = models.OneToOneField(
+class UserSubject(models.Model):
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='teacher',
-        null=True, blank=True,
+        related_name='user_subjects',
         verbose_name="Пользователь"
     )
-    last_name = models.CharField(max_length=100, verbose_name="Фамилия")
-    first_name = models.CharField(max_length=100, verbose_name="Имя")
-    patronymic_name = models.CharField(max_length=100, blank=True, verbose_name="Отчество")
-
-    subjects = models.ManyToManyField(
-        Subject, blank=True,
-        related_name='teachers',
-        verbose_name="Преподаваемые дисциплины"
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE,
+        related_name='user_subjects',
+        verbose_name="Дисциплина"
     )
 
     class Meta:
-        verbose_name = "Учитель"
-        verbose_name_plural = "Учителя"
+        verbose_name = "Дисциплина пользователя"
+        verbose_name_plural = "Дисциплины пользователей"
+        unique_together = ('user', 'subject')
 
     def __str__(self):
-        return f"{self.last_name} {self.first_name} {self.patronymic_name}".strip()
+        return f"{self.user} → {self.subject}"
 
 
 class Difficulty(models.Model):
@@ -130,7 +127,13 @@ class StudyGroup(models.Model):
         ('second', '2'),
     ]
 
-    name = models.CharField(max_length=50, verbose_name="Название")
+    name = models.CharField(
+        max_length=50,
+        unique=False,
+        blank=True,
+        editable=False,
+        verbose_name="Название"
+    )
     students_count = models.PositiveIntegerField(verbose_name="Количество человек")
     letter = models.CharField(max_length=1, blank=True, verbose_name="Литера")
     type = models.CharField(
@@ -161,6 +164,24 @@ class StudyGroup(models.Model):
         verbose_name_plural = "Учебные группы"
         unique_together = ('name', 'study_year')
 
+    def _build_name(self):
+        if self.type == 'subgroup':
+            if not self.parent_id:
+                raise ValueError("У подгруппы обязательно должна быть родительская группа")
+            if not self.subgroup_number:
+                raise ValueError("У подгруппы обязательно должен быть указан номер")
+            return f"{self.parent.name}-{self.get_subgroup_number_display()}"
+        else:
+            if not self.study_year_id:
+                raise ValueError("У группы обязательно должен быть указан год обучения")
+            if not self.letter:
+                raise ValueError("У группы обязательно должна быть указана литера")
+            return f"{self.study_year.year}{self.letter}"
+
+    def save(self, *args, **kwargs):
+        self.name = self._build_name()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name
 
@@ -174,7 +195,8 @@ class Workload(models.Model):
         verbose_name="Учебная группа"
     )
     teacher = models.ForeignKey(
-        Teacher, on_delete=models.CASCADE,
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
         related_name='workloads',
         verbose_name="Учитель"
     )
@@ -190,7 +212,7 @@ class Workload(models.Model):
         unique_together = ('study_group', 'subject', 'teacher')
 
     def __str__(self):
-        return f"{self.teacher} → {self.subject} ({self.study_group})"
+        return f"{self.teacher} -> {self.subject} ({self.study_group})"
 
     @property
     def difficulty_points(self):
