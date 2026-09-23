@@ -6,6 +6,14 @@ from django.views.generic import TemplateView
 from schedule.models import *
 
 # Create your views here.
+class ShowProfilesView(View):
+    def get(self, request, *args, **kwargs):
+        result = ""
+        for obj in Profile.objects.select_related('user').all():
+            result += f"{obj}<br>"
+        return HttpResponse(result)
+
+
 class ShowClassroomsView(TemplateView):
     template_name = "classrooms/show_classrooms.html"
 

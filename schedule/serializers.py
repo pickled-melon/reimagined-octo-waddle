@@ -3,6 +3,14 @@ from rest_framework import serializers
 from schedule.models import *
 
 
+class ProfileSerializer(serializers.ModelSerializer):
+    role_display = serializers.CharField(source='get_role_display', read_only=True)
+
+    class Meta:
+        model = Profile
+        fields = ['id', 'user', 'role', 'role_display']
+
+
 class ClassroomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Classroom

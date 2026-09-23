@@ -1,8 +1,12 @@
-from rest_framework.viewsets import GenericViewSet
-from rest_framework import mixins, viewsets
+from rest_framework import viewsets
 
 from schedule.models import *
 from schedule.serializers import *
+
+
+class ProfileViewSet(viewsets.ModelViewSet):
+    queryset = Profile.objects.select_related('user').all()
+    serializer_class = ProfileSerializer
 
 
 class ClassroomViewSet(viewsets.ModelViewSet):

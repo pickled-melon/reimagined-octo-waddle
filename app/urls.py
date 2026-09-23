@@ -8,6 +8,7 @@ from schedule.api import *
 
 
 router = DefaultRouter()
+router.register('profiles', ProfileViewSet, basename='profiles')
 router.register('classrooms', ClassroomViewSet, basename='classrooms')
 router.register('subjects', SubjectViewSet, basename='subjects')
 router.register('study-years', StudyYearViewSet, basename='study-years')
@@ -23,6 +24,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
 
+    path('profiles/', views.ShowProfilesView.as_view(), name='profiles'),
     path('classrooms/', views.ShowClassroomsView.as_view(), name='classrooms'),
     path('subjects/', views.ShowSubjectsView.as_view(), name='subjects'),
     path('study-years/', views.ShowStudyYearsView.as_view(), name='study-years'),

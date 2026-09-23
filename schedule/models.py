@@ -1,6 +1,42 @@
 from django.conf import settings
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.contrib.auth.models import User
+
+class Profile(models.Model):
+    class Role(models.IntegerChoices):
+        UNDEFINED = 0, 'Не определена'
+        METHODIST = 1, 'Методист'
+        HEAD_TEACHER = 2, 'Завуч'
+        TEACHER = 3, 'Учитель'
+
+    user = models.OneToOneField(
+        "auth.User",
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='profile',
+        verbose_name="Пользователь"
+    )
+    role = models.IntegerField(
+        choices=Role.choices,
+        default=Role.UNDEFINED,
+        verbose_name="Роль"
+    )
+
+    class Meta:
+        verbose_name = "Профиль"
+        verbose_name_plural = "Профили"
+
+    def __str__(self):
+        return f"{self.user} — {self.get_role_display()}"
+
+
+@receiver(post_save, sender=User)
+def on_user_create(sender, instance, created, *args, **kwargs):
+    if created:
+        Profile.objects.create(user=instance, role=Profile.Role.UNDEFINED)
 
 
 class Classroom(models.Model):
