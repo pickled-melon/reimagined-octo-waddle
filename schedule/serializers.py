@@ -52,7 +52,6 @@ class DifficultySerializer(serializers.ModelSerializer):
 
 
 class StudyGroupSerializer(serializers.ModelSerializer):
-    # name вычисляется в save() — оно только для чтения
     name = serializers.CharField(read_only=True)
 
     class Meta:
