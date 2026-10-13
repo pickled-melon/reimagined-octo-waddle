@@ -40,13 +40,15 @@ function onEditClick(item) {
 
 async function onUpdate() {
   await axios.put(`/api/difficulties/${itemToEdit.value.id}/`, {
-    ...itemToEdit.value,
+    study_year: itemToEdit.value.study_year,
+    subject: itemToEdit.value.subject,
+    points: itemToEdit.value.points,
   });
   await fetchItems();
 }
 
 async function onRemoveClick(item) {
-  if (!confirm('Удалить запись?')) return;
+  if (!confirm(`Удалить "${item.subject_display} — ${item.study_year_display} класс"?`)) return;
   await axios.delete(`/api/difficulties/${item.id}/`);
   await fetchItems();
 }
@@ -96,11 +98,18 @@ onBeforeMount(async () => {
     </div>
 
     <table class="table table-striped bg-white">
-      <thead><tr><th>Год</th><th>Дисциплина</th><th>Баллы</th><th></th></tr></thead>
+      <thead>
+        <tr>
+          <th>Год</th>
+          <th>Дисциплина</th>
+          <th>Баллы</th>
+          <th></th>
+        </tr>
+      </thead>
       <tbody>
         <tr v-for="item in items" :key="item.id">
-          <td>{{ item.study_year }}</td>
-          <td>{{ item.subject }}</td>
+          <td>{{ item.study_year_display }} класс</td>
+          <td>{{ item.subject_display }}</td>
           <td>{{ item.points }}</td>
           <td class="text-end">
             <button class="btn btn-sm btn-outline-primary me-1"
@@ -124,8 +133,22 @@ onBeforeMount(async () => {
             <button class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            <label class="form-label">Баллы</label>
-            <input type="number" class="form-control" v-model="itemToEdit.points" />
+            <div class="mb-3">
+              <label class="form-label">Год обучения</label>
+              <select class="form-select" v-model="itemToEdit.study_year">
+                <option v-for="y in studyYears" :key="y.id" :value="y.id">{{ y.year }}</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Дисциплина</label>
+              <select class="form-select" v-model="itemToEdit.subject">
+                <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.title }}</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Баллы</label>
+              <input type="number" class="form-control" v-model="itemToEdit.points" />
+            </div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>

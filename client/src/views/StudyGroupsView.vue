@@ -43,7 +43,8 @@ function onEditClick(item) {
 
 async function onUpdate() {
   await axios.put(`/api/study-groups/${itemToEdit.value.id}/`, {
-    ...itemToEdit.value,
+    students_count: itemToEdit.value.students_count,
+    letter: itemToEdit.value.letter,
   });
   await fetchItems();
 }
@@ -109,12 +110,20 @@ onBeforeMount(async () => {
     </div>
 
     <table class="table table-striped bg-white">
-      <thead><tr><th>Название</th><th>Человек</th><th>Тип</th><th>Год</th><th></th></tr></thead>
+      <thead>
+        <tr>
+          <th>Название</th>
+          <th>Человек</th>
+          <th>Тип</th>
+          <th>Год</th>
+          <th></th>
+        </tr>
+      </thead>
       <tbody>
         <tr v-for="item in items" :key="item.id">
           <td>{{ item.name }}</td>
           <td>{{ item.students_count }}</td>
-          <td>{{ item.type }}</td>
+          <td>{{ item.type_display }}</td>
           <td>{{ item.study_year }}</td>
           <td class="text-end">
             <button class="btn btn-sm btn-outline-primary me-1"

@@ -20,8 +20,11 @@ async function fetchClassrooms() {
 }
 
 async function onRemoveClick(classroom) {
-  if (!confirm(`Удалить кабинет ${classroom.number}?`)) return;
+  if (!confirm(`Удалить кабинет ${classroom.number}?`))
+    return;
+  
   await axios.delete(`/api/classrooms/${classroom.id}/`);
+
   await fetchClassrooms();
 }
 

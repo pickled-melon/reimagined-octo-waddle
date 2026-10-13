@@ -3,20 +3,59 @@ from rest_framework import serializers
 from schedule.models import *
 
 
+def user_full_name(user):
+    if user is None:
+        return '-'
+    profile = getattr(user, 'profile', None)
+    patronymic = profile.patronymic_name if profile else ''
+    parts = [user.last_name, user.first_name, patronymic]
+    full = ' '.join(p for p in parts if p).strip()
+    return full or user.username
+
+
 class ProfileSerializer(serializers.ModelSerializer):
     role_display = serializers.CharField(source='get_role_display', read_only=True)
     user_display = serializers.SerializerMethodField()
+    username = serializers.CharField(source='user.username', read_only=True)
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'user_display', 'role', 'role_display']
-    
+        fields = [
+            'id', 'user', 'username', 'user_display',
+            'last_name', 'first_name', 'patronymic_name',
+            'role', 'role_display',
+        ]
+
     def get_user_display(self, obj):
         if obj.user is None:
             return '-'
-        
-        full = obj.user.get_full_name().strip()
+        parts = [obj.user.last_name, obj.user.first_name, obj.patronymic_name]
+        full = ' '.join(p for p in parts if p).strip()
         return full or obj.user.username
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.user:
+            data['first_name'] = instance.user.first_name
+            data['last_name'] = instance.user.last_name
+        return data
+
+    def update(self, instance, validated_data):
+        first_name = validated_data.pop('first_name', None)
+        last_name = validated_data.pop('last_name', None)
+        if instance.user:
+            changed = False
+            if first_name is not None and instance.user.first_name != first_name:
+                instance.user.first_name = first_name
+                changed = True
+            if last_name is not None and instance.user.last_name != last_name:
+                instance.user.last_name = last_name
+                changed = True
+            if changed:
+                instance.user.save()
+        return super().update(instance, validated_data)
 
 
 class ClassroomSerializer(serializers.ModelSerializer):
@@ -29,10 +68,11 @@ class SubjectSerializer(serializers.ModelSerializer):
     classrooms = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Classroom.objects.all(), required=False
     )
+    type_display = serializers.CharField(source='get_type_display', read_only=True)
 
     class Meta:
         model = Subject
-        fields = ['id', 'title', 'type', 'classrooms']
+        fields = ['id', 'title', 'type', 'type_display', 'classrooms']
 
 
 class StudyYearSerializer(serializers.ModelSerializer):
@@ -56,26 +96,31 @@ class UserSubjectSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'subject', 'user_display', 'subject_display']
 
     def get_user_display(self, obj):
-        if obj.user is None:
-            return '-'
-        full = obj.user.get_full_name().strip()
-        return full or obj.user.username
+        return user_full_name(obj.user)
 
 
 class DifficultySerializer(serializers.ModelSerializer):
+    study_year_display = serializers.CharField(source='study_year.year', read_only=True)
+    subject_display = serializers.CharField(source='subject.title', read_only=True)
+
     class Meta:
         model = Difficulty
-        fields = ['id', 'study_year', 'subject', 'points']
+        fields = [
+            'id', 'study_year', 'subject', 'points',
+            'study_year_display', 'subject_display',
+        ]
 
 
 class StudyGroupSerializer(serializers.ModelSerializer):
     name = serializers.CharField(read_only=True)
+    type_display = serializers.CharField(source='get_type_display', read_only=True)
 
     class Meta:
         model = StudyGroup
         fields = [
-            'id', 'name', 'students_count', 'letter', 'type',
-            'subgroup_number', 'parent', 'study_year',
+            'id', 'name', 'students_count', 'letter',
+            'type', 'type_display', 'subgroup_number',
+            'parent', 'study_year',
         ]
 
 
@@ -94,10 +139,7 @@ class WorkloadSerializer(serializers.ModelSerializer):
         ]
 
     def get_teacher_display(self, obj):
-        if obj.teacher is None:
-            return '-'
-        full = obj.teacher.get_full_name().strip()
-        return full or obj.teacher.username
+        return user_full_name(obj.teacher)
 
 
 class LessonSerializer(serializers.ModelSerializer):

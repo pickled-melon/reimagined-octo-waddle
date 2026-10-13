@@ -28,7 +28,9 @@ function onProfileEditClick(item) {
 
 async function onUpdateProfile() {
   await axios.put(`/api/profiles/${profileToEdit.value.id}/`, {
-    user: profileToEdit.value.user,
+    last_name: profileToEdit.value.last_name || '',
+    first_name: profileToEdit.value.first_name || '',
+    patronymic_name: profileToEdit.value.patronymic_name || '',
     role: profileToEdit.value.role,
   });
   await fetchProfiles();
@@ -48,14 +50,16 @@ onBeforeMount(fetchProfiles);
     <table class="table table-striped bg-white">
       <thead>
         <tr>
-          <th>Пользователь</th>
+          <th>Логин</th>
+          <th>ФИО</th>
           <th>Роль</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="item in profiles" :key="item.id">
-          <td>{{ item.user_display || item.user }}</td>
+          <td>{{ item.username }}</td>
+          <td>{{ item.user_display }}</td>
           <td>{{ item.role_display }}</td>
           <td class="text-end">
             <button class="btn btn-sm btn-outline-primary"
@@ -72,17 +76,32 @@ onBeforeMount(fetchProfiles);
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Изменить роль</h5>
+            <h5 class="modal-title">Редактировать профиль</h5>
             <button class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            <p class="mb-2">
-              <strong>{{ profileToEdit.user_display || profileToEdit.user }}</strong>
-            </p>
-            <label class="form-label">Роль</label>
-            <select class="form-select" v-model="profileToEdit.role">
-              <option v-for="r in ROLES" :key="r.value" :value="r.value">{{ r.label }}</option>
-            </select>
+            <div class="mb-3">
+              <label class="form-label">Логин</label>
+              <input class="form-control" :value="profileToEdit.username" disabled />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Фамилия</label>
+              <input class="form-control" v-model="profileToEdit.last_name" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Имя</label>
+              <input class="form-control" v-model="profileToEdit.first_name" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Отчество</label>
+              <input class="form-control" v-model="profileToEdit.patronymic_name" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Роль</label>
+              <select class="form-select" v-model="profileToEdit.role">
+                <option v-for="r in ROLES" :key="r.value" :value="r.value">{{ r.label }}</option>
+              </select>
+            </div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>

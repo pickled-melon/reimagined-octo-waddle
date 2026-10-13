@@ -19,6 +19,9 @@ class Profile(models.Model):
         related_name='profile',
         verbose_name="Пользователь"
     )
+    patronymic_name = models.CharField(
+        max_length=100, blank=True, verbose_name="Отчество"
+    )
     role = models.IntegerField(
         choices=Role.choices,
         default=Role.UNDEFINED,

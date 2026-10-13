@@ -39,7 +39,9 @@ function onSubjectEditClick(subject) {
 
 async function onUpdateSubject() {
   await axios.put(`/api/subjects/${subjectToEdit.value.id}/`, {
-    ...subjectToEdit.value,
+    title: subjectToEdit.value.title,
+    type: subjectToEdit.value.type,
+    classrooms: subjectToEdit.value.classrooms,
   });
   await fetchSubjects();
 }
@@ -94,11 +96,17 @@ onBeforeMount(async () => {
     </div>
 
     <table class="table table-striped bg-white">
-      <thead><tr><th>Название</th><th>Тип</th><th></th></tr></thead>
+      <thead>
+        <tr>
+          <th>Название</th>
+          <th>Тип</th>
+          <th></th>
+        </tr>
+      </thead>
       <tbody>
         <tr v-for="item in subjects" :key="item.id">
           <td>{{ item.title }}</td>
-          <td>{{ item.type }}</td>
+          <td>{{ item.type_display }}</td>
           <td class="text-end">
             <button class="btn btn-sm btn-outline-primary me-1"
                     @click="onSubjectEditClick(item)"

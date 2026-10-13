@@ -13,6 +13,10 @@ const links = [
   { to: '/lessons', label: 'Расписание', icon: 'bi-grid-3x3' },
   { to: '/profiles', label: 'Профили', icon: 'bi-person-circle' },
 ];
+
+const externalLinks = [
+  { to: '/admin/', label: 'Панель админа', icon: 'bi-person-fill-gear' },
+];
 </script>
 
 <template>
@@ -24,6 +28,14 @@ const links = [
           <RouterLink :to="link.to" class="nav-link text-white-50">
             <i :class="['bi', link.icon, 'me-2']"></i>{{ link.label }}
           </RouterLink>
+        </li>
+      </ul>
+      <hr class="text-white-50">
+      <ul class="nav flex-column">
+        <li v-for="link in externalLinks" :key="link.to" class="nav-item">
+          <a :href="link.to" class="nav-link text-white-50">
+            <i :class="['bi', link.icon, 'me-2']"></i>{{ link.label }}
+          </a>
         </li>
       </ul>
     </aside>
