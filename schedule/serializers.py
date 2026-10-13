@@ -61,7 +61,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 class ClassroomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Classroom
-        fields = ['id', 'number', 'capacity']
+        fields = ['id', 'number', 'capacity', 'picture']
 
 
 class SubjectSerializer(serializers.ModelSerializer):
@@ -72,7 +72,7 @@ class SubjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subject
-        fields = ['id', 'title', 'type', 'type_display', 'classrooms']
+        fields = ['id', 'title', 'type', 'type_display', 'classrooms', 'picture']
 
 
 class StudyYearSerializer(serializers.ModelSerializer):

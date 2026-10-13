@@ -5,6 +5,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 
+# Register your models here.
 class Profile(models.Model):
     class Role(models.IntegerChoices):
         UNDEFINED = 0, 'Не определена'
@@ -45,6 +46,7 @@ def on_user_create(sender, instance, created, *args, **kwargs):
 class Classroom(models.Model):
     number = models.CharField(max_length=10, unique=True, verbose_name="Номер")
     capacity = models.PositiveIntegerField(verbose_name="Вместимость")
+    picture = models.ImageField("Изображение", null=True, blank=True, upload_to="classrooms")
 
     class Meta:
         verbose_name = "Кабинет"
@@ -65,6 +67,7 @@ class Subject(models.Model):
         max_length=20, choices=SUBJECT_TYPES,
         default='classroom', verbose_name="Тип"
     )
+    picture = models.ImageField("Изображение", null=True, blank=True, upload_to="subjects")
 
     classrooms = models.ManyToManyField(
         Classroom, blank=True,

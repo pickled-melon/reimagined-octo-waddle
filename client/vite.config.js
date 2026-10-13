@@ -25,6 +25,9 @@ export default defineConfig({
       },
       '/static': {
         target: "http://localhost:8000"
+      },
+      '/media': {
+        target: "http://localhost:8000"
       }
     }
   }

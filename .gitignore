@@ -3,3 +3,4 @@ __pycache__/
 db.sqlite3
 .vscode/
 .pytest_cache/
+media

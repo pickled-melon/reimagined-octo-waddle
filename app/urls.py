@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.conf.urls.static import static
 
 from rest_framework.routers import DefaultRouter
 
@@ -34,4 +35,4 @@ urlpatterns = [
     path('study-groups/', views.ShowStudyGroupsView.as_view(), name='study-groups'),
     path('workloads/', views.ShowWorkloadsView.as_view(), name='workloads'),
     path('lessons/', views.ShowLessonsView.as_view(), name='lessons'),
-]
+]  + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -5,7 +5,7 @@ from schedule.models import *
 # Register your models here.
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ['user', 'role']
+    list_display = ['user', 'patronymic_name', 'role', 'get_role_display']
     list_filter = ['role']
     search_fields = ['user__username', 'user__last_name', 'user__first_name']
 
@@ -16,7 +16,7 @@ class ProfileAdmin(admin.ModelAdmin):
 
 @admin.register(Classroom)
 class ClassroomAdmin(admin.ModelAdmin):
-    list_display = ['number', 'capacity']
+    list_display = ['number', 'capacity', 'picture']
 
 
 @admin.register(BellSchedule)
@@ -36,12 +36,13 @@ class StudyYearAdmin(admin.ModelAdmin):
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ['title', 'type']
+    list_display = ['title', 'type', 'picture']
 
 
 @admin.register(UserSubject)
 class UserSubjectAdmin(admin.ModelAdmin):
     list_display = ['user', 'subject']
+
 
 @admin.register(Difficulty)
 class DifficultyAdmin(admin.ModelAdmin):
@@ -51,6 +52,7 @@ class DifficultyAdmin(admin.ModelAdmin):
 @admin.register(Workload)
 class WorkloadAdmin(admin.ModelAdmin):
     list_display = ['hours_count', 'study_group', 'teacher', 'subject']
+
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
