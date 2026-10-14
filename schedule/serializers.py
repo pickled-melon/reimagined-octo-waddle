@@ -64,15 +64,25 @@ class ClassroomSerializer(serializers.ModelSerializer):
         fields = ['id', 'number', 'capacity', 'picture']
 
 
+class SubjectPictureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubjectPicture
+        fields = ['id', 'image', 'subject']
+
+
 class SubjectSerializer(serializers.ModelSerializer):
     classrooms = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Classroom.objects.all(), required=False
     )
     type_display = serializers.CharField(source='get_type_display', read_only=True)
+    pictures = SubjectPictureSerializer(many=True, read_only=True)
 
     class Meta:
         model = Subject
-        fields = ['id', 'title', 'type', 'type_display', 'classrooms', 'picture']
+        fields = [
+            'id', 'title', 'type', 'type_display',
+            'classrooms', 'pictures',
+        ]
 
 
 class StudyYearSerializer(serializers.ModelSerializer):

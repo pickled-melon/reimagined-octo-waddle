@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.static import static
@@ -12,6 +13,7 @@ router = DefaultRouter()
 router.register('profiles', ProfileViewSet, basename='profiles')
 router.register('classrooms', ClassroomViewSet, basename='classrooms')
 router.register('subjects', SubjectViewSet, basename='subjects')
+router.register('subject-pictures', SubjectPictureViewSet, basename='subject-pictures')
 router.register('study-years', StudyYearViewSet, basename='study-years')
 router.register('bell-schedules', BellScheduleViewSet, basename='bell-schedules')
 router.register('user-subjects', UserSubjectViewSet, basename='user-subjects')
@@ -35,4 +37,4 @@ urlpatterns = [
     path('study-groups/', views.ShowStudyGroupsView.as_view(), name='study-groups'),
     path('workloads/', views.ShowWorkloadsView.as_view(), name='workloads'),
     path('lessons/', views.ShowLessonsView.as_view(), name='lessons'),
-]  + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

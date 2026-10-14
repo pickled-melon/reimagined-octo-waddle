@@ -67,7 +67,6 @@ class Subject(models.Model):
         max_length=20, choices=SUBJECT_TYPES,
         default='classroom', verbose_name="Тип"
     )
-    picture = models.ImageField("Изображение", null=True, blank=True, upload_to="subjects")
 
     classrooms = models.ManyToManyField(
         Classroom, blank=True,
@@ -81,6 +80,23 @@ class Subject(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class SubjectPicture(models.Model):
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE,
+        related_name='pictures',
+        verbose_name="Дисциплина"
+    )
+    image = models.ImageField("Изображение", upload_to="subject_albums")
+
+    class Meta:
+        verbose_name = "Фотография дисциплины"
+        verbose_name_plural = "Фотографии дисциплин"
+
+    def __str__(self):
+        return f"Фото #{self.id}: {self.subject.title}"
 
 
 class StudyYear(models.Model):

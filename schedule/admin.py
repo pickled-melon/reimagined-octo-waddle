@@ -34,9 +34,19 @@ class StudyYearAdmin(admin.ModelAdmin):
     list_display = ['year', 'max_weekly_hours', 'max_daily_hours']
 
 
+class SubjectPictureInline(admin.TabularInline):
+    model = SubjectPicture
+    extra = 1
+
+
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ['title', 'type', 'picture']
+    list_display = ['title', 'type']
+    inlines = [SubjectPictureInline]
+
+@admin.register(SubjectPicture)
+class SubjectPictureAdmin(admin.ModelAdmin):
+    list_display = ['id', 'subject', 'image']
 
 
 @admin.register(UserSubject)

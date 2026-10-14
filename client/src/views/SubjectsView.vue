@@ -12,13 +12,13 @@ const classrooms = ref([]);
 const subjectToAdd = ref({ classrooms: [] });
 const subjectToEdit = ref({ classrooms: [] });
 
-const subjectPictureRef = ref();
-const subjectAddImageUrl = ref();
+const albumPictureRef = ref();
+const albumAddImagesUrls = ref([]);
 
-const subjectEditPictureRef = ref();
-const subjectEditImageUrl = ref();
+const albumSubject = ref({});
+const albumPictures = ref([]);
 
-const subjectModalPictureUrl = ref('');
+const viewPictureUrl = ref('');
 
 const SUBJECT_TYPES = [
   { value: 'classroom', label: 'Классно-урочный' },
@@ -35,24 +35,8 @@ async function fetchClassrooms() {
   classrooms.value = r.data;
 }
 
-function subjectAddPictureChange() {
-  subjectAddImageUrl.value = URL.createObjectURL(subjectPictureRef.value.files[0]);
-}
-
-function subjectEditPictureChange() {
-  if (subjectEditPictureRef.value.files.length === 0) {
-    subjectEditImageUrl.value = '';
-    return;
-  }
-  subjectEditImageUrl.value = URL.createObjectURL(subjectEditPictureRef.value.files[0]);
-}
-
 async function onSubjectAdd() {
   const formData = new FormData();
-
-  if (subjectPictureRef.value && subjectPictureRef.value.files.length > 0) {
-    formData.append('picture', subjectPictureRef.value.files[0]);
-  }
   formData.set('title', subjectToAdd.value.title);
   formData.set('type', subjectToAdd.value.type || 'classroom');
 
@@ -62,14 +46,10 @@ async function onSubjectAdd() {
   }
 
   await axios.post('/api/subjects/', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+    headers: { 'Content-Type': 'multipart/form-data' }
   });
 
   subjectToAdd.value = { classrooms: [] };
-  subjectAddImageUrl.value = '';
-  if (subjectPictureRef.value) subjectPictureRef.value.value = '';
   await fetchSubjects();
 }
 
@@ -78,8 +58,6 @@ function onSubjectEditClick(subject) {
     ...subject,
     classrooms: [...(subject.classrooms || [])]
   };
-  subjectEditImageUrl.value = '';
-  if (subjectEditPictureRef.value) subjectEditPictureRef.value.value = '';
 }
 
 async function onUpdateSubject() {
@@ -92,14 +70,8 @@ async function onUpdateSubject() {
     formData.append('classrooms', id);
   }
 
-  if (subjectEditPictureRef.value && subjectEditPictureRef.value.files.length > 0) {
-    formData.append('picture', subjectEditPictureRef.value.files[0]);
-  }
-
   await axios.put(`/api/subjects/${subjectToEdit.value.id}/`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+    headers: { 'Content-Type': 'multipart/form-data' }
   });
 
   await fetchSubjects();
@@ -111,8 +83,49 @@ async function onRemoveClick(subject) {
   await fetchSubjects();
 }
 
+function onAlbumEditClick(subject) {
+  albumSubject.value = { ...subject };
+  albumPictures.value = subject.pictures ? [...subject.pictures] : [];
+  albumAddImagesUrls.value = [];
+  if (albumPictureRef.value) albumPictureRef.value.value = '';
+}
+
+function albumAddPicturesChange() {
+  albumAddImagesUrls.value = [];
+  const files = albumPictureRef.value.files;
+  for (let i = 0; i < files.length; i++) {
+    albumAddImagesUrls.value.push(URL.createObjectURL(files[i]));
+  }
+}
+
+async function onAlbumUpload() {
+  const files = albumPictureRef.value.files;
+  for (let i = 0; i < files.length; i++) {
+    const formData = new FormData();
+    formData.append('image', files[i]);
+    formData.set('subject', albumSubject.value.id);
+
+    await axios.post('/api/subject-pictures/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  }
+  albumPictureRef.value.value = '';
+  albumAddImagesUrls.value = [];
+
+  await fetchSubjects();
+  const updated = subjects.value.find(s => s.id === albumSubject.value.id);
+  albumPictures.value = updated && updated.pictures ? [...updated.pictures] : [];
+}
+
+async function onAlbumRemovePicture(picture) {
+  if (!confirm('Удалить фотографию из альбома?')) return;
+  await axios.delete(`/api/subject-pictures/${picture.id}/`);
+  await fetchSubjects();
+  albumPictures.value = albumPictures.value.filter(p => p.id !== picture.id);
+}
+
 function onShowPicture(url) {
-  subjectModalPictureUrl.value = url;
+  viewPictureUrl.value = url;
 }
 
 onBeforeMount(async () => {
@@ -134,11 +147,11 @@ onBeforeMount(async () => {
       <div class="card-body">
         <form @submit.prevent="onSubjectAdd">
           <div class="row g-3 align-items-end">
-            <div class="col-md-3">
+            <div class="col-md-4">
               <label class="form-label">Название</label>
               <input class="form-control" v-model="subjectToAdd.title" required />
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
               <label class="form-label">Тип</label>
               <select class="form-select" v-model="subjectToAdd.type">
                 <option v-for="t in SUBJECT_TYPES" :key="t.value" :value="t.value">{{ t.label }}</option>
@@ -151,19 +164,7 @@ onBeforeMount(async () => {
               </select>
             </div>
             <div class="col-md-2">
-              <label class="form-label">Картинка</label>
-              <input
-                class="form-control"
-                type="file"
-                ref="subjectPictureRef"
-                @change="subjectAddPictureChange"
-              />
-            </div>
-            <div class="col-md-2">
               <button class="btn btn-primary w-100">Добавить</button>
-            </div>
-            <div v-if="subjectAddImageUrl" class="col-md-2">
-              <img :src="subjectAddImageUrl" style="max-height: 60px;" alt="">
             </div>
           </div>
         </form>
@@ -175,7 +176,7 @@ onBeforeMount(async () => {
         <tr>
           <th>Название</th>
           <th>Тип</th>
-          <th>Картинка</th>
+          <th>Альбом</th>
           <th></th>
         </tr>
       </thead>
@@ -184,17 +185,27 @@ onBeforeMount(async () => {
           <td>{{ item.title }}</td>
           <td>{{ item.type_display }}</td>
           <td>
-            <img
-              v-if="item.picture"
-              :src="item.picture"
-              style="max-height: 60px; cursor: pointer;"
-              alt=""
-              data-bs-toggle="modal"
-              data-bs-target="#subjectPictureModal"
-              @click="onShowPicture(item.picture)"
-            >
+            <div v-if="item.pictures && item.pictures.length" class="d-flex gap-1 flex-wrap">
+              <img
+                v-for="pic in item.pictures"
+                :key="pic.id"
+                :src="pic.image"
+                style="max-height: 60px; cursor: pointer;"
+                alt=""
+                data-bs-toggle="modal"
+                data-bs-target="#viewPictureModal"
+                @click="onShowPicture(pic.image)"
+              >
+            </div>
+            <span v-else class="text-muted small">—</span>
           </td>
           <td class="text-end">
+            <button class="btn btn-sm btn-outline-secondary me-1"
+                    @click="onAlbumEditClick(item)"
+                    data-bs-toggle="modal" data-bs-target="#albumModal"
+                    title="Альбом">
+              <i class="bi bi-images"></i>
+            </button>
             <button class="btn btn-sm btn-outline-primary me-1"
                     @click="onSubjectEditClick(item)"
                     data-bs-toggle="modal" data-bs-target="#editSubjectModal">
@@ -232,18 +243,6 @@ onBeforeMount(async () => {
                 <option v-for="c in classrooms" :key="c.id" :value="c.id">{{ c.number }}</option>
               </select>
             </div>
-            <div class="mb-3">
-              <label class="form-label">Картинка</label>
-              <input
-                class="form-control"
-                type="file"
-                ref="subjectEditPictureRef"
-                @change="subjectEditPictureChange"
-              />
-            </div>
-            <div v-if="subjectEditImageUrl" class="mb-3">
-              <img :src="subjectEditImageUrl" style="max-height: 60px;" alt="">
-            </div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -253,15 +252,92 @@ onBeforeMount(async () => {
       </div>
     </div>
 
-    <div class="modal fade" id="subjectPictureModal" tabindex="-1">
+    <div class="modal fade" id="albumModal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Изображение</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <h5 class="modal-title">
+              Альбом — {{ albumSubject.title }}
+            </h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+
+            <div v-if="albumPictures.length === 0" class="alert alert-info mb-3">
+              В альбоме пока нет фотографий.
+            </div>
+
+            <div v-else class="d-flex gap-2 flex-wrap mb-3">
+              <div
+                v-for="pic in albumPictures"
+                :key="pic.id"
+                class="position-relative"
+              >
+                <img
+                  :src="pic.image"
+                  style="max-height: 120px; cursor: pointer;"
+                  alt=""
+                  @click="onShowPicture(pic.image)"
+                  data-bs-toggle="modal"
+                  data-bs-target="#viewPictureModal"
+                >
+                <button
+                  type="button"
+                  class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
+                  @click="onAlbumRemovePicture(pic)"
+                  title="Удалить"
+                >
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
+            </div>
+
+            <hr>
+
+            <label class="form-label">Добавить фотографии</label>
+            <input
+              class="form-control mb-2"
+              type="file"
+              accept="image/*"
+              multiple
+              ref="albumPictureRef"
+              @change="albumAddPicturesChange"
+            />
+
+            <div v-if="albumAddImagesUrls.length" class="d-flex gap-2 flex-wrap mt-2">
+              <img
+                v-for="(url, i) in albumAddImagesUrls"
+                :key="i"
+                :src="url"
+                style="max-height: 80px;"
+                alt=""
+              >
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Закрыть</button>
+            <button
+              class="btn btn-primary"
+              @click="onAlbumUpload"
+              :disabled="albumAddImagesUrls.length === 0"
+            >
+              <i class="bi bi-upload me-1"></i>Загрузить
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="viewPictureModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Просмотр изображения</h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body text-center">
-            <img :src="subjectModalPictureUrl" style="max-width: 100%;" alt="">
+            <img :src="viewPictureUrl" style="max-width: 100%; max-height: 75vh;" alt="">
           </div>
         </div>
       </div>

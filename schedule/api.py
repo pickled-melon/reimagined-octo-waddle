@@ -15,9 +15,13 @@ class ClassroomViewSet(viewsets.ModelViewSet):
 
 
 class SubjectViewSet(viewsets.ModelViewSet):
-    queryset = Subject.objects.prefetch_related('classrooms').all()
+    queryset = Subject.objects.prefetch_related('classrooms', 'pictures').all()
     serializer_class = SubjectSerializer
 
+
+class SubjectPictureViewSet(viewsets.ModelViewSet):
+    queryset = SubjectPicture.objects.select_related('subject').all()
+    serializer_class = SubjectPictureSerializer
 
 class StudyYearViewSet(viewsets.ModelViewSet):
     queryset = StudyYear.objects.all()
