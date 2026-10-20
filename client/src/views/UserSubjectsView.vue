@@ -46,7 +46,7 @@ async function fetchSubjects() {
 }
 
 async function fetchProfiles() {
-  const r = await axios.get('/api/profiles/');
+  const r = await axios.get('/api/profile/'); // ИСПРАВЛЕНО
   profiles.value = r.data;
 }
 

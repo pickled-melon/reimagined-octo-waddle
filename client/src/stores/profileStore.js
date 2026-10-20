@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref } from 'vue';
+import { ref, onBeforeMount } from 'vue';
 import axios from 'axios';
 import Cookies from "js-cookie";
 
@@ -42,7 +42,9 @@ const useProfileStore = defineStore('profileStore', () => {
         await fetchMe();
     }
 
-    fetchMe();
+    onBeforeMount(() => {
+        fetchMe();
+    })
 
     return {
         isAuthenticated,

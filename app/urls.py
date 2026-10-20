@@ -2,15 +2,13 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.static import static
-
 from rest_framework.routers import DefaultRouter
 
 from schedule import views
 from schedule.api import *
 
-
 router = DefaultRouter()
-router.register('profiles', ProfileViewSet, basename='profiles')
+router.register('profile', ProfileViewSet, basename='profile')
 router.register('classrooms', ClassroomViewSet, basename='classrooms')
 router.register('subjects', SubjectViewSet, basename='subjects')
 router.register('subject-pictures', SubjectPictureViewSet, basename='subject-pictures')
@@ -22,11 +20,9 @@ router.register('study-groups', StudyGroupViewSet, basename='study-groups')
 router.register('workloads', WorkloadViewSet, basename='workloads')
 router.register('lessons', LessonViewSet, basename='lessons')
 
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
-
     path('profiles/', views.ShowProfilesView.as_view(), name='profiles'),
     path('classrooms/', views.ShowClassroomsView.as_view(), name='classrooms'),
     path('subjects/', views.ShowSubjectsView.as_view(), name='subjects'),

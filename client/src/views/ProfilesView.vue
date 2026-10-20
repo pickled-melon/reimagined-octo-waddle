@@ -18,7 +18,7 @@ const ROLES = [
 ];
 
 async function fetchProfiles() {
-  const r = await axios.get('/api/profiles/');
+  const r = await axios.get('/api/profile/'); // ИСПРАВЛЕНО
   profiles.value = r.data;
 }
 
@@ -27,7 +27,7 @@ function onProfileEditClick(item) {
 }
 
 async function onUpdateProfile() {
-  await axios.put(`/api/profiles/${profileToEdit.value.id}/`, {
+  await axios.put(`/api/profile/${profileToEdit.value.id}/`, { // ИСПРАВЛЕНО
     last_name: profileToEdit.value.last_name || '',
     first_name: profileToEdit.value.first_name || '',
     patronymic_name: profileToEdit.value.patronymic_name || '',

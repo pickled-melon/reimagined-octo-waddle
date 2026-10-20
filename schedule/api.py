@@ -1,4 +1,3 @@
-from rest_framework.viewsets import GenericViewSet
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -10,8 +9,22 @@ from django.contrib.auth import authenticate
 from schedule.models import *
 from schedule.serializers import *
 
-class ProfileViewSet(GenericViewSet):
-    queryset = User.objects.all()
+class ProfileViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet
+):
+    queryset = Profile.objects.select_related('user').all()
+    serializer_class = ProfileSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if not self.request.user.is_authenticated:
+            return qs.none()
+        if self.request.user.is_superuser:
+            return qs
+        return qs.filter(user=self.request.user)
 
     @action(detail=False, url_path="me", methods=['GET'])
     def get_me(self, request, *args, **kwargs):
@@ -58,6 +71,7 @@ class ProfileViewSet(GenericViewSet):
         users = User.objects.all().values('id', 'username')
         return Response(users)
 
+
 class ClassroomViewSet(viewsets.ModelViewSet):
     queryset = Classroom.objects.all()
     serializer_class = ClassroomSerializer
@@ -69,6 +83,7 @@ class ClassroomViewSet(viewsets.ModelViewSet):
             if user_id: qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
+
 
 class SubjectViewSet(viewsets.ModelViewSet):
     queryset = Subject.objects.prefetch_related('classrooms', 'pictures').all()
@@ -82,6 +97,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
             return qs
         return qs.filter(user=self.request.user)
 
+
 class SubjectPictureViewSet(viewsets.ModelViewSet):
     queryset = SubjectPicture.objects.select_related('subject').all()
     serializer_class = SubjectPictureSerializer
@@ -93,6 +109,7 @@ class SubjectPictureViewSet(viewsets.ModelViewSet):
             if user_id: qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
+
 
 class StudyYearViewSet(viewsets.ModelViewSet):
     queryset = StudyYear.objects.all()
@@ -106,6 +123,7 @@ class StudyYearViewSet(viewsets.ModelViewSet):
             return qs
         return qs.filter(user=self.request.user)
 
+
 class BellScheduleViewSet(viewsets.ModelViewSet):
     queryset = BellSchedule.objects.all()
     serializer_class = BellScheduleSerializer
@@ -117,6 +135,7 @@ class BellScheduleViewSet(viewsets.ModelViewSet):
             if user_id: qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
+
 
 class UserSubjectViewSet(viewsets.ModelViewSet):
     queryset = UserSubject.objects.select_related('user', 'subject').all()
@@ -130,6 +149,7 @@ class UserSubjectViewSet(viewsets.ModelViewSet):
             return qs
         return qs.filter(creator=self.request.user)
 
+
 class DifficultyViewSet(viewsets.ModelViewSet):
     queryset = Difficulty.objects.select_related('study_year', 'subject').all()
     serializer_class = DifficultySerializer
@@ -141,6 +161,7 @@ class DifficultyViewSet(viewsets.ModelViewSet):
             if user_id: qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
+
 
 class StudyGroupViewSet(viewsets.ModelViewSet):
     queryset = StudyGroup.objects.select_related('study_year', 'parent').all()
@@ -154,6 +175,7 @@ class StudyGroupViewSet(viewsets.ModelViewSet):
             return qs
         return qs.filter(user=self.request.user)
 
+
 class WorkloadViewSet(viewsets.ModelViewSet):
     queryset = Workload.objects.select_related('study_group', 'teacher', 'subject').all()
     serializer_class = WorkloadSerializer
@@ -165,6 +187,7 @@ class WorkloadViewSet(viewsets.ModelViewSet):
             if user_id: qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
+
 
 class LessonViewSet(viewsets.ModelViewSet):
     queryset = Lesson.objects.select_related('workload__study_group', 'workload__teacher', 'workload__subject', 'classroom', 'bell_schedule').all()
