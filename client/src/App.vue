@@ -26,13 +26,26 @@ async function onLogoutButtonClick() {
 </script>
 
 <template>
-  <div class="d-flex">
-    <aside class="bg-dark text-white p-3 d-flex flex-column" style="width: 240px; min-height: 100vh; flex-shrink: 0;">
-      <h5 class="mb-4 text-nowrap"><i class="bi bi-calendar-week me-2"></i>Расписание</h5>
-      
-      <ul class="nav flex-column mb-auto">
+  <div class="d-flex" style="height: 100vh; overflow: hidden;">
+    <aside
+      class="bg-dark text-white p-3 d-flex flex-column"
+      style="width: 240px; flex-shrink: 0; height: 100%;"
+    >
+      <h5 class="mb-4 text-nowrap">
+        <i class="bi bi-calendar-week me-2"></i>Расписание
+      </h5>
+
+      <ul
+        class="nav flex-column flex-grow-1"
+        style="overflow-y: auto; min-height: 0;"
+      >
         <li v-for="link in links" :key="link.to" class="nav-item">
-          <a v-if="link.external" :href="link.to" class="nav-link text-white-50" target="_blank">
+          <a
+            v-if="link.external"
+            :href="link.to"
+            class="nav-link text-white-50"
+            target="_blank"
+          >
             <i :class="['bi', link.icon, 'me-2']"></i>{{ link.label }}
           </a>
           <RouterLink v-else :to="link.to" class="nav-link text-white-50">
@@ -41,14 +54,17 @@ async function onLogoutButtonClick() {
         </li>
       </ul>
 
-      <hr class="text-white-50">
-      
-      <div class="mt-2">
+      <hr class="text-white-50 mt-3" />
+
+      <div class="mt-1">
         <div v-if="isAuthenticated" class="d-flex flex-column gap-2">
           <div class="text-white-50 small text-truncate">
             <i class="bi bi-person-circle me-1"></i> {{ userName }}
           </div>
-          <button class="btn btn-outline-danger btn-sm w-100" @click="onLogoutButtonClick">
+          <button
+            class="btn btn-outline-danger btn-sm w-100"
+            @click="onLogoutButtonClick"
+          >
             <i class="bi bi-box-arrow-right me-1"></i> Выйти
           </button>
         </div>
@@ -60,7 +76,7 @@ async function onLogoutButtonClick() {
       </div>
     </aside>
 
-    <main class="flex-grow-1 bg-light" style="overflow-x: hidden;">
+    <main class="flex-grow-1 bg-light" style="overflow: hidden; height: 100%;">
       <RouterView />
     </main>
   </div>
