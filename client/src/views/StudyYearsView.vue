@@ -10,8 +10,8 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize,
-  users, selectedUserId, isSuperuser, fetchUsers, fetchData, onRemove
+  items, totalCount, currentPage, pageSize, stats,
+  users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/study-years/');
 
 const studyYearToAdd = ref({});
@@ -21,6 +21,7 @@ async function onStudyYearAdd() {
   await axios.post('/api/study-years/', { ...studyYearToAdd.value });
   studyYearToAdd.value = {};
   await fetchData(1);
+  await fetchStats();
 }
 
 function onStudyYearEditClick(item) {
@@ -34,11 +35,18 @@ async function onUpdateStudyYear() {
     max_daily_hours: studyYearToEdit.value.max_daily_hours,
   });
   await fetchData(currentPage.value);
+  await fetchStats();
+}
+
+async function onDeleteYear(item) {
+  await onRemove(item.id, `Удалить ${item.year} класс?`);
+  await fetchStats();
 }
 
 onBeforeMount(async () => {
   await fetchUsers();
   await fetchData(1);
+  await fetchStats();
 });
 </script>
 
@@ -52,6 +60,8 @@ onBeforeMount(async () => {
     :users="users"
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
+    :stats="stats"
+    :stats-labels="{ avg: 'Ср. часов/нед', max: 'Макс. часов/нед', min: 'Мин. часов/нед' }"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
@@ -106,7 +116,7 @@ onBeforeMount(async () => {
                 <button class="btn btn-sm btn-outline-primary me-1" @click="onStudyYearEditClick(item)" data-bs-toggle="modal" data-bs-target="#editStudyYearModal">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" @click="onRemove(item.id, `Удалить ${item.year} класс?`)">
+                <button class="btn btn-sm btn-outline-danger" @click="onDeleteYear(item)">
                   <i class="bi bi-trash"></i>
                 </button>
               </td>

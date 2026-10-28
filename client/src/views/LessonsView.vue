@@ -10,8 +10,8 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize,
-  users, selectedUserId, isSuperuser, fetchUsers, fetchData, onRemove
+  items, totalCount, currentPage, pageSize, stats,
+  users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/lessons/');
 
 const workloads = ref([]);
@@ -54,6 +54,7 @@ async function onAdd() {
   await axios.post('/api/lessons/', { ...itemToAdd.value });
   itemToAdd.value = {};
   await fetchData(1);
+  await fetchStats();
 }
 
 function onEditClick(item) {
@@ -69,10 +70,12 @@ async function onUpdate() {
     bell_schedule: itemToEdit.value.bell_schedule,
   });
   await fetchData(currentPage.value);
+  await fetchStats();
 }
 
-function onDeleteLesson(item) {
-  onRemove(item.id, `Удалить занятие "${item.workload_display}"?`);
+async function onDeleteLesson(item) {
+  await onRemove(item.id, `Удалить занятие "${item.workload_display}"?`);
+  await fetchStats();
 }
 
 onBeforeMount(async () => {
@@ -81,6 +84,7 @@ onBeforeMount(async () => {
   await fetchClassrooms();
   await fetchBells();
   await fetchData(1);
+  await fetchStats();
 });
 </script>
 
@@ -94,6 +98,7 @@ onBeforeMount(async () => {
     :users="users"
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
+    :stats="stats"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >

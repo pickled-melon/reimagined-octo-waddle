@@ -10,8 +10,8 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize,
-  users, selectedUserId, isSuperuser, fetchUsers, fetchData, onRemove
+  items, totalCount, currentPage, pageSize, stats,
+  users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/workloads/');
 
 const subjects = ref([]);
@@ -43,6 +43,7 @@ async function onAdd() {
   await axios.post('/api/workloads/', { ...itemToAdd.value });
   itemToAdd.value = {};
   await fetchData(1);
+  await fetchStats();
 }
 
 function onEditClick(item) {
@@ -57,10 +58,12 @@ async function onUpdate() {
     subject: itemToEdit.value.subject,
   });
   await fetchData(currentPage.value);
+  await fetchStats();
 }
 
-function onDeleteWorkload(item) {
-  onRemove(item.id, `Удалить нагрузку "${item.study_group_display} — ${item.subject_display}"?`);
+async function onDeleteWorkload(item) {
+  await onRemove(item.id, `Удалить нагрузку "${item.study_group_display} — ${item.subject_display}"?`);
+  await fetchStats();
 }
 
 onBeforeMount(async () => {
@@ -69,6 +72,7 @@ onBeforeMount(async () => {
   await fetchProfiles();
   await fetchSubjects();
   await fetchData(1);
+  await fetchStats();
 });
 </script>
 
@@ -82,6 +86,8 @@ onBeforeMount(async () => {
     :users="users"
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
+    :stats="stats"
+    :stats-labels="{ avg: 'Ср. часов', max: 'Макс. часов', min: 'Мин. часов' }"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >

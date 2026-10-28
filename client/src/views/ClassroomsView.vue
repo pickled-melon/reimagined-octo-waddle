@@ -10,8 +10,8 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize, loading,
-  users, selectedUserId, isSuperuser, fetchUsers, fetchData, onRemove
+  items, totalCount, currentPage, pageSize, loading, stats,
+  users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/classrooms/');
 
 const classroomToEdit = ref({});
@@ -51,6 +51,7 @@ async function onClassroomAdd() {
   classroomAddImageUrl.value = '';
   if (classroomPictureRef.value) classroomPictureRef.value.value = '';
   await fetchData(1);
+  await fetchStats();
 }
 
 function onClassroomEditClick(classroom) {
@@ -73,6 +74,12 @@ async function onUpdateClassroom() {
   });
 
   await fetchData(currentPage.value);
+  await fetchStats();
+}
+
+async function onDeleteClassroom(item) {
+  await onRemove(item.id, `Удалить кабинет ${item.number}?`);
+  await fetchStats();
 }
 
 function onShowPicture(url) {
@@ -82,6 +89,7 @@ function onShowPicture(url) {
 onBeforeMount(async () => {
   await fetchUsers();
   await fetchData(1);
+  await fetchStats();
 });
 </script>
 
@@ -95,6 +103,8 @@ onBeforeMount(async () => {
     :users="users"
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
+    :stats="stats"
+    :stats-labels="{ avg: 'Ср. вместимость', max: 'Макс. вместимость', min: 'Мин. вместимость' }"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
@@ -160,7 +170,7 @@ onBeforeMount(async () => {
               <button class="btn btn-sm btn-outline-primary" @click="onClassroomEditClick(item)" data-bs-toggle="modal" data-bs-target="#editClassroomModal">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger" @click="onRemove(item.id, `Удалить кабинет ${item.number}?`)">
+              <button class="btn btn-sm btn-outline-danger" @click="onDeleteClassroom(item)">
                 <i class="bi bi-trash"></i>
               </button>
             </div>

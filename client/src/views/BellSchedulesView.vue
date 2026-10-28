@@ -10,8 +10,8 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize,
-  users, selectedUserId, isSuperuser, fetchUsers, fetchData, onRemove
+  items, totalCount, currentPage, pageSize, stats,
+  users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/bell-schedules/');
 
 const bellToAdd = ref({});
@@ -21,6 +21,7 @@ async function onBellAdd() {
   await axios.post('/api/bell-schedules/', { ...bellToAdd.value });
   bellToAdd.value = {};
   await fetchData(1);
+  await fetchStats();
 }
 
 function onBellEditClick(item) {
@@ -34,11 +35,18 @@ async function onUpdateBell() {
     end_time: bellToEdit.value.end_time,
   });
   await fetchData(currentPage.value);
+  await fetchStats();
+}
+
+async function onDeleteBell(item) {
+  await onRemove(item.id, `Удалить ${item.lesson_number}-й урок?`);
+  await fetchStats();
 }
 
 onBeforeMount(async () => {
   await fetchUsers();
   await fetchData(1);
+  await fetchStats();
 });
 </script>
 
@@ -52,6 +60,7 @@ onBeforeMount(async () => {
     :users="users"
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
+    :stats="stats"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
@@ -106,7 +115,7 @@ onBeforeMount(async () => {
                 <button class="btn btn-sm btn-outline-primary me-1" @click="onBellEditClick(item)" data-bs-toggle="modal" data-bs-target="#editBellModal">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" @click="onRemove(item.id, `Удалить ${item.lesson_number}-й урок?`)">
+                <button class="btn btn-sm btn-outline-danger" @click="onDeleteBell(item)">
                   <i class="bi bi-trash"></i>
                 </button>
               </td>

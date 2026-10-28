@@ -10,8 +10,8 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize,
-  users, selectedUserId, isSuperuser, fetchUsers, fetchData, onRemove
+  items, totalCount, currentPage, pageSize, stats,
+  users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/study-groups/');
 
 const studyYears = ref([]);
@@ -36,6 +36,7 @@ async function onAdd() {
   await axios.post('/api/study-groups/', { ...itemToAdd.value });
   itemToAdd.value = {};
   await fetchData(1);
+  await fetchStats();
 }
 
 function onEditClick(item) {
@@ -48,16 +49,19 @@ async function onUpdate() {
     letter: itemToEdit.value.letter,
   });
   await fetchData(currentPage.value);
+  await fetchStats();
 }
 
-function onDeleteGroup(item) {
-  onRemove(item.id, `Удалить "${item.name}"?`);
+async function onDeleteGroup(item) {
+  await onRemove(item.id, `Удалить "${item.name}"?`);
+  await fetchStats();
 }
 
 onBeforeMount(async () => {
   await fetchUsers();
   await fetchStudyYears();
   await fetchData(1);
+  await fetchStats();
 });
 </script>
 
@@ -71,6 +75,8 @@ onBeforeMount(async () => {
     :users="users"
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
+    :stats="stats"
+    :stats-labels="{ avg: 'Ср. учеников', max: 'Макс. учеников', min: 'Мин. учеников' }"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >

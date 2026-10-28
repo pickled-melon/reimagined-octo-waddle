@@ -10,8 +10,8 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize,
-  users, selectedUserId, isSuperuser, fetchUsers, fetchData
+  items, totalCount, currentPage, pageSize, stats,
+  users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats
 } = useCrud('/api/profile/');
 
 const profileToEdit = ref({});
@@ -35,11 +35,13 @@ async function onUpdateProfile() {
     role: profileToEdit.value.role,
   });
   await fetchData(currentPage.value);
+  await fetchStats();
 }
 
 onBeforeMount(async () => {
   await fetchUsers();
   await fetchData(1);
+  await fetchStats();
 });
 </script>
 
@@ -53,6 +55,7 @@ onBeforeMount(async () => {
     :users="users"
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
+    :stats="stats"
     :show-filter="false"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"

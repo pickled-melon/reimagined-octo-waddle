@@ -10,8 +10,8 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize,
-  users, selectedUserId, isSuperuser, fetchUsers, fetchData, onRemove
+  items, totalCount, currentPage, pageSize, stats,
+  users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/subjects/');
 
 const classrooms = ref([]);
@@ -47,6 +47,7 @@ async function onSubjectAdd() {
   });
   subjectToAdd.value = { classrooms: [] };
   await fetchData(1);
+  await fetchStats();
 }
 
 function onSubjectEditClick(subject) {
@@ -65,10 +66,12 @@ async function onUpdateSubject() {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
   await fetchData(currentPage.value);
+  await fetchStats();
 }
 
-function onDeleteSubject(item) {
-  onRemove(item.id, `Удалить дисциплину "${item.title}"?`);
+async function onDeleteSubject(item) {
+  await onRemove(item.id, `Удалить дисциплину "${item.title}"?`);
+  await fetchStats();
 }
 
 function onAlbumEditClick(subject) {
@@ -118,6 +121,7 @@ onBeforeMount(async () => {
   await fetchUsers();
   await fetchClassrooms();
   await fetchData(1);
+  await fetchStats();
 });
 </script>
 
@@ -131,6 +135,7 @@ onBeforeMount(async () => {
     :users="users"
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
+    :stats="stats"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >

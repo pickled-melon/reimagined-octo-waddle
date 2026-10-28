@@ -10,8 +10,8 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize,
-  users, selectedUserId, isSuperuser, fetchUsers, fetchData, onRemove
+  items, totalCount, currentPage, pageSize, stats,
+  users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/difficulties/');
 
 const subjects = ref([]);
@@ -33,6 +33,7 @@ async function onAdd() {
   await axios.post('/api/difficulties/', { ...itemToAdd.value });
   itemToAdd.value = {};
   await fetchData(1);
+  await fetchStats();
 }
 
 function onEditClick(item) {
@@ -46,10 +47,12 @@ async function onUpdate() {
     points: itemToEdit.value.points,
   });
   await fetchData(currentPage.value);
+  await fetchStats();
 }
 
-function onDeleteDifficulty(item) {
-  onRemove(item.id, `Удалить "${item.subject_display} — ${item.study_year_display} класс"?`);
+async function onDeleteDifficulty(item) {
+  await onRemove(item.id, `Удалить "${item.subject_display} — ${item.study_year_display} класс"?`);
+  await fetchStats();
 }
 
 onBeforeMount(async () => {
@@ -57,6 +60,7 @@ onBeforeMount(async () => {
   await fetchStudyYears();
   await fetchSubjects();
   await fetchData(1);
+  await fetchStats();
 });
 </script>
 
@@ -70,6 +74,8 @@ onBeforeMount(async () => {
     :users="users"
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
+    :stats="stats"
+    :stats-labels="{ avg: 'Ср. балл', max: 'Макс. балл', min: 'Мин. балл' }"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >

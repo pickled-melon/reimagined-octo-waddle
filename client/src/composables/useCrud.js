@@ -12,6 +12,7 @@ export function useCrud(apiUrl) {
   const currentPage = ref(1);
   const pageSize = 20;
   const loading = ref(false);
+  const stats = ref(null);
   
   const users = ref([]);
   const selectedUserId = ref("");
@@ -21,6 +22,15 @@ export function useCrud(apiUrl) {
       const r = await axios.get('/api/profile/all/');
       users.value = r.data;
     }
+  }
+
+  async function fetchStats() {
+    let url = `${apiUrl}stats/`;
+    if (isSuperuser.value && selectedUserId.value) {
+      url += `?user=${selectedUserId.value}`;
+    }
+    const r = await axios.get(url);
+    stats.value = r.data;
   }
 
   async function fetchData(page = 1) {
@@ -38,6 +48,7 @@ export function useCrud(apiUrl) {
 
   watch(selectedUserId, () => {
     fetchData(1);
+    fetchStats();
   });
 
   watch(currentPage, (newPage) => {
@@ -51,6 +62,7 @@ export function useCrud(apiUrl) {
       ? currentPage.value - 1
       : currentPage.value;
     await fetchData(targetPage);
+    await fetchStats();
   }
 
   return {
@@ -59,11 +71,13 @@ export function useCrud(apiUrl) {
     currentPage,
     pageSize,
     loading,
+    stats,
     users,
     selectedUserId,
     isSuperuser,
     fetchUsers,
     fetchData,
+    fetchStats,
     onRemove
   };
 }

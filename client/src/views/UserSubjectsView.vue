@@ -10,8 +10,8 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize,
-  users, selectedUserId, isSuperuser, fetchUsers, fetchData, onRemove
+  items, totalCount, currentPage, pageSize, stats,
+  users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/user-subjects/');
 
 const subjects = ref([]);
@@ -37,6 +37,7 @@ async function onAdd() {
   await axios.post('/api/user-subjects/', { ...itemToAdd.value });
   itemToAdd.value = {};
   await fetchData(1);
+  await fetchStats();
 }
 
 function onEditClick(item) {
@@ -49,10 +50,12 @@ async function onUpdate() {
     subject: itemToEdit.value.subject,
   });
   await fetchData(currentPage.value);
+  await fetchStats();
 }
 
-function onDeleteUserSubject(item) {
-  onRemove(item.id, `Удалить "${item.user_display} — ${item.subject_display}"?`);
+async function onDeleteUserSubject(item) {
+  await onRemove(item.id, `Удалить "${item.user_display} — ${item.subject_display}"?`);
+  await fetchStats();
 }
 
 onBeforeMount(async () => {
@@ -60,6 +63,7 @@ onBeforeMount(async () => {
   await fetchProfiles();
   await fetchSubjects();
   await fetchData(1);
+  await fetchStats();
 });
 </script>
 
@@ -73,6 +77,7 @@ onBeforeMount(async () => {
     :users="users"
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
+    :stats="stats"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >

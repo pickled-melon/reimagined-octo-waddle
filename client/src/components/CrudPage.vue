@@ -10,7 +10,9 @@ defineProps({
   users: { type: Array, default: () => [] },
   selectedUserId: { type: [String, Number], default: "" },
   isSuperuser: { type: Boolean, default: false },
-  showFilter: { type: Boolean, default: true }
+  showFilter: { type: Boolean, default: true },
+  stats: { type: Object, default: null },
+  statsLabels: { type: Object, default: () => ({ avg: 'Ср. значение', max: 'Макс', min: 'Мин' }) }
 });
 
 const emit = defineEmits(['update:selectedUserId', 'update:currentPage']);
@@ -20,22 +22,31 @@ const emit = defineEmits(['update:selectedUserId', 'update:currentPage']);
   <div class="page-grid">
     <div class="top-panel">
       <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-3">
-        <h1 class="h3 mb-0"><i :class="['bi', icon, 'me-2']"></i>{{ title }}</h1>
-        
-        <div v-if="isSuperuser && showFilter" class="d-flex align-items-center gap-2">
-          <label class="form-label mb-0 fw-semibold text-muted">Фильтр по автору:</label>
-          <select 
-            :value="selectedUserId" 
-            @change="emit('update:selectedUserId', $event.target.value)" 
-            class="form-select border-primary" 
-            style="width: 200px;"
-          >
-            <option value="">Все пользователи</option>
-            <option v-for="u in users" :key="u.id" :value="u.id">{{ u.username }}</option>
-          </select>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <h1 class="h3 mb-0"><i :class="['bi', icon, 'me-2']"></i>{{ title }}</h1>
+          
+          <div v-if="stats" class="d-flex gap-3 text-muted small border-start ps-3">
+            <span>Всего: <strong>{{ stats.count }}</strong></span>
+            <span v-if="stats.avg !== null && stats.avg !== undefined">{{ statsLabels.avg }}: <strong>{{ stats.avg.toFixed(1) }}</strong></span>
+            <span v-if="stats.max !== null && stats.max !== undefined">{{ statsLabels.max }}: <strong>{{ stats.max }}</strong></span>
+            <span v-if="stats.min !== null && stats.min !== undefined">{{ statsLabels.min }}: <strong>{{ stats.min }}</strong></span>
+          </div>
         </div>
-
-        <span class="badge text-bg-secondary rounded-pill px-3 py-2">Всего: {{ totalCount }}</span>
+        
+        <div class="d-flex gap-3 align-items-center">
+          <div v-if="isSuperuser && showFilter" class="d-flex align-items-center gap-2">
+            <label class="form-label mb-0 fw-semibold text-muted">Фильтр по автору:</label>
+            <select 
+              :value="selectedUserId" 
+              @change="emit('update:selectedUserId', $event.target.value)" 
+              class="form-select border-primary" 
+              style="width: 200px;"
+            >
+              <option value="">Все пользователи</option>
+              <option v-for="u in users" :key="u.id" :value="u.id">{{ u.username }}</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <slot name="form"></slot>
