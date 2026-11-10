@@ -4,6 +4,8 @@ from django.urls import path, include
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 
+from debug_toolbar.toolbar import debug_toolbar_urls
+
 from schedule import views
 from schedule.api import *
 
@@ -33,4 +35,6 @@ urlpatterns = [
     path('study-groups/', views.ShowStudyGroupsView.as_view(), name='study-groups'),
     path('workloads/', views.ShowWorkloadsView.as_view(), name='workloads'),
     path('lessons/', views.ShowLessonsView.as_view(), name='lessons'),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) \
+  + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) \
+  + debug_toolbar_urls()
