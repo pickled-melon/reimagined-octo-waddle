@@ -14,6 +14,13 @@ const {
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/subjects/');
 
+const subjectStatsConfig = [
+  { key: 'count', label: 'Всего' },
+  { key: 'extracurricular_percent', label: 'Внеурочных', suffix: '%', format: 'float' },
+  { key: 'avg_difficulty', label: 'Ср. трудность', format: 'float' },
+  { key: 'total_hours', label: 'Всего часов' },
+];
+
 const classrooms = ref([]);
 const subjectToAdd = ref({ classrooms: [] });
 const subjectToEdit = ref({ classrooms: [] });
@@ -28,6 +35,13 @@ const SUBJECT_TYPES = [
   { value: 'classroom', label: 'Классно-урочный' },
   { value: 'extracurricular', label: 'Внеурочный' },
 ];
+
+function difficultyBadgeClass(score) {
+  if (!score) return 'text-bg-light border text-dark';
+  if (score >= 8) return 'text-bg-danger';
+  if (score >= 5) return 'text-bg-warning';
+  return 'text-bg-success';
+}
 
 async function fetchClassrooms() {
   const r = await axios.get('/api/classrooms/?page_size=1000');
@@ -136,6 +150,7 @@ onBeforeMount(async () => {
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
     :stats="stats"
+    :stats-config="subjectStatsConfig"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
@@ -179,8 +194,11 @@ onBeforeMount(async () => {
             <tr>
               <th>Название</th>
               <th>Тип</th>
-              <th>Автор</th>
+              <th>Часы/нед.</th>
+              <th>Трудность</th>
+              <th>Кабинеты</th>
               <th>Альбом</th>
+              <th>Автор</th>
               <th class="text-end">Действия</th>
             </tr>
           </thead>
@@ -192,13 +210,28 @@ onBeforeMount(async () => {
                   {{ item.type_display }}
                 </span>
               </td>
-              <td class="text-muted"><i class="bi bi-person-circle me-1"></i>{{ item.user_display }}</td>
+              <td>
+                <span class="badge text-bg-light border" title="Суммарная нагрузка по всем классам">
+                  <i class="bi bi-clock me-1"></i>{{ item.total_hours }} ч.
+                </span>
+              </td>
+              <td>
+                <span class="badge rounded-pill" :class="difficultyBadgeClass(item.avg_difficulty)" title="Средний балл трудности">
+                  {{ item.avg_difficulty ? item.avg_difficulty.toFixed(1) : '—' }}
+                </span>
+              </td>
+              <td>
+                <span class="badge text-bg-secondary" title="Требуемые кабинеты">
+                  <i class="bi bi-door-closed me-1"></i>{{ item.classrooms_count }}
+                </span>
+              </td>
               <td>
                 <div v-if="item.pictures && item.pictures.length" class="d-flex gap-1 flex-wrap">
                   <img v-for="pic in item.pictures" :key="pic.id" :src="pic.image" class="rounded shadow-sm" style="max-height: 40px; cursor: pointer;" alt="" data-bs-toggle="modal" data-bs-target="#viewPictureModal" @click="onShowPicture(pic.image)">
                 </div>
                 <span v-else class="text-muted small fst-italic">Нет фото</span>
               </td>
+              <td class="text-muted"><i class="bi bi-person-circle me-1"></i>{{ item.user_display }}</td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-secondary me-1" @click="onAlbumEditClick(item)" data-bs-toggle="modal" data-bs-target="#albumModal" title="Альбом">
                   <i class="bi bi-images"></i>

@@ -14,6 +14,13 @@ const {
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/lessons/');
 
+const lessonStatsConfig = [
+  { key: 'count', label: 'Всего уроков' },
+  { key: 'test_count', label: 'Контрольных' },
+  { key: 'teacher_conflicts', label: 'Конфликты учителей' },
+  { key: 'group_conflicts', label: 'Конфликты групп' },
+];
+
 const workloads = ref([]);
 const classrooms = ref([]);
 const bells = ref([]);
@@ -99,6 +106,7 @@ onBeforeMount(async () => {
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
     :stats="stats"
+    :stats-config="lessonStatsConfig"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
@@ -156,7 +164,8 @@ onBeforeMount(async () => {
             <tr>
               <th>День</th>
               <th>Слот</th>
-              <th>Нагрузка</th>
+              <th>Класс / Предмет</th>
+              <th>Учитель</th>
               <th>Кабинет</th>
               <th>Контр.</th>
               <th>Автор</th>
@@ -168,6 +177,7 @@ onBeforeMount(async () => {
               <td class="fw-semibold">{{ item.week_day_display }}</td>
               <td>{{ item.bell_schedule_display }}</td>
               <td>{{ item.workload_display }}</td>
+              <td>{{ item.teacher_display }}</td>
               <td><span class="badge text-bg-light border">Каб. {{ item.classroom_display }}</span></td>
               <td>
                 <span v-if="item.is_test" class="badge text-bg-danger rounded-pill">Да</span>

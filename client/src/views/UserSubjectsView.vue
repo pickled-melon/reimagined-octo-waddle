@@ -14,6 +14,13 @@ const {
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/user-subjects/');
 
+const userSubjectStatsConfig = [
+  { key: 'count', label: 'Всего связей' },
+  { key: 'teachers_count', label: 'Учителей' },
+  { key: 'subjects_count', label: 'Дисциплин' },
+  { key: 'avg_subjects', label: 'Ср. дисциплин/учителя', format: 'float' },
+];
+
 const subjects = ref([]);
 const profiles = ref([]);
 const itemToAdd = ref({});
@@ -78,6 +85,7 @@ onBeforeMount(async () => {
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
     :stats="stats"
+    :stats-config="userSubjectStatsConfig"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
@@ -117,6 +125,7 @@ onBeforeMount(async () => {
             <tr>
               <th>Учитель</th>
               <th>Дисциплина</th>
+              <th>Нагрузка</th>
               <th>Автор записи</th>
               <th class="text-end">Действия</th>
             </tr>
@@ -125,6 +134,16 @@ onBeforeMount(async () => {
             <tr v-for="item in items" :key="item.id">
               <td class="fw-semibold">{{ item.user_display }}</td>
               <td>{{ item.subject_display }}</td>
+              <td>
+                <div class="d-flex gap-2">
+                  <span class="badge text-bg-light border">
+                    <i class="bi bi-clock me-1"></i>{{ item.assigned_hours }} ч.
+                  </span>
+                  <span class="badge text-bg-light border">
+                    <i class="bi bi-people me-1"></i>{{ item.assigned_groups }} кл.
+                  </span>
+                </div>
+              </td>
               <td class="text-muted"><i class="bi bi-person-circle me-1"></i>{{ item.creator_display }}</td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-primary me-1" @click="onEditClick(item)" data-bs-toggle="modal" data-bs-target="#editItemModal">

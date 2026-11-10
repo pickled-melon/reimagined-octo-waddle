@@ -14,6 +14,14 @@ const {
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/difficulties/');
 
+const difficultyStatsConfig = [
+  { key: 'count', label: 'Всего оценок' },
+  { key: 'avg', label: 'Ср. балл', format: 'float' },
+  { key: 'max', label: 'Макс. балл' },
+  { key: 'hard_count', label: 'Сложных' },
+  { key: 'easy_count', label: 'Легких' },
+];
+
 const subjects = ref([]);
 const studyYears = ref([]);
 const itemToAdd = ref({});
@@ -55,6 +63,12 @@ async function onDeleteDifficulty(item) {
   await fetchStats();
 }
 
+function categoryBadgeClass(category) {
+  if (category === 'Высокая') return 'text-bg-danger';
+  if (category === 'Средняя') return 'text-bg-warning';
+  return 'text-bg-success';
+}
+
 onBeforeMount(async () => {
   await fetchUsers();
   await fetchStudyYears();
@@ -75,7 +89,7 @@ onBeforeMount(async () => {
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
     :stats="stats"
-    :stats-labels="{ avg: 'Ср. балл', max: 'Макс. балл', min: 'Мин. балл' }"
+    :stats-config="difficultyStatsConfig"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
@@ -120,6 +134,7 @@ onBeforeMount(async () => {
               <th>Год</th>
               <th>Дисциплина</th>
               <th>Баллы</th>
+              <th>Категория</th>
               <th>Автор</th>
               <th class="text-end">Действия</th>
             </tr>
@@ -128,7 +143,12 @@ onBeforeMount(async () => {
             <tr v-for="item in items" :key="item.id">
               <td class="fw-semibold">{{ item.study_year_display }} класс</td>
               <td>{{ item.subject_display }}</td>
-              <td>{{ item.points }}</td>
+              <td><strong>{{ item.points }}</strong></td>
+              <td>
+                <span class="badge rounded-pill" :class="categoryBadgeClass(item.category)">
+                  {{ item.category }}
+                </span>
+              </td>
               <td class="text-muted"><i class="bi bi-person-circle me-1"></i>{{ item.user_display }}</td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-primary me-1" @click="onEditClick(item)" data-bs-toggle="modal" data-bs-target="#editItemModal">

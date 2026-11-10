@@ -14,6 +14,13 @@ const {
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/bell-schedules/');
 
+const bellStatsConfig = [
+  { key: 'count', label: 'Всего слотов' },
+  { key: 'avg_duration', label: 'Ср. длит.', suffix: 'мин.', format: 'float' },
+  { key: 'total_lessons', label: 'Всего уроков' },
+  { key: 'avg_lessons_per_slot', label: 'Ср. уроков/слот', format: 'float' },
+];
+
 const bellToAdd = ref({});
 const bellToEdit = ref({});
 
@@ -43,6 +50,13 @@ async function onDeleteBell(item) {
   await fetchStats();
 }
 
+function loadBadgeClass(count) {
+  if (count >= 20) return 'text-bg-danger';
+  if (count >= 10) return 'text-bg-warning';
+  if (count > 0) return 'text-bg-info';
+  return 'text-bg-light border text-muted';
+}
+
 onBeforeMount(async () => {
   await fetchUsers();
   await fetchData(1);
@@ -61,6 +75,7 @@ onBeforeMount(async () => {
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
     :stats="stats"
+    :stats-config="bellStatsConfig"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
@@ -72,7 +87,7 @@ onBeforeMount(async () => {
         <div class="card-body">
           <form @submit.prevent="onBellAdd">
             <div class="row g-3 align-items-end">
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <label class="form-label">№ урока</label>
                 <input type="number" class="form-control" v-model="bellToAdd.lesson_number" required />
               </div>
@@ -84,7 +99,7 @@ onBeforeMount(async () => {
                 <label class="form-label">Конец</label>
                 <input type="time" class="form-control" v-model="bellToAdd.end_time" required />
               </div>
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <button class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Добавить</button>
               </div>
             </div>
@@ -101,6 +116,8 @@ onBeforeMount(async () => {
               <th>№</th>
               <th>Начало</th>
               <th>Конец</th>
+              <th>Длительность</th>
+              <th>Нагрузка</th>
               <th>Автор</th>
               <th class="text-end">Действия</th>
             </tr>
@@ -110,6 +127,16 @@ onBeforeMount(async () => {
               <td class="fw-semibold">{{ item.lesson_number }}</td>
               <td>{{ item.start_time }}</td>
               <td>{{ item.end_time }}</td>
+              <td>
+                <span class="badge text-bg-light border">
+                  <i class="bi bi-hourglass-split me-1"></i>{{ item.duration_minutes }} мин.
+                </span>
+              </td>
+              <td>
+                <span class="badge rounded-pill" :class="loadBadgeClass(item.lessons_count)" title="Количество уроков, идущих в это время">
+                  <i class="bi bi-journal-bookmark me-1"></i>{{ item.lessons_count }} ур.
+                </span>
+              </td>
               <td class="text-muted"><i class="bi bi-person-circle me-1"></i>{{ item.user_display }}</td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-primary me-1" @click="onBellEditClick(item)" data-bs-toggle="modal" data-bs-target="#editBellModal">

@@ -53,13 +53,13 @@ class Command(BaseCommand):
         groups = self._create_study_groups(users, study_years, N)
 
         self.stdout.write('Генерация дисциплин учителей...')
-        self._create_user_subjects(users, subjects, N)
+        user_subjects = self._create_user_subjects(users, subjects, N)
 
         self.stdout.write('Генерация трудностей...')
         self._create_difficulties(users, study_years, subjects, N)
 
         self.stdout.write('Генерация нагрузок...')
-        workloads = self._create_workloads(users, groups, subjects, N)
+        workloads = self._create_workloads(users, groups, user_subjects, N)
 
         self.stdout.write('Генерация занятий...')
         self._create_lessons(users, workloads, classrooms, bells, N)
@@ -269,17 +269,16 @@ class Command(BaseCommand):
 
     def _create_bell_schedules(self, users, N):
         count = BellSchedule.objects.count()
-        if count >= N:
+        if count >= 8:
             self.stdout.write(f'  Уже есть {count} звонков, пропускаем.')
-            return list(BellSchedule.objects.all()[:N])
+            return list(BellSchedule.objects.all().order_by('lesson_number')[:8])
 
-        needed = N - count
-        max_lesson = BellSchedule.objects.order_by('-lesson_number').values_list('lesson_number', flat=True).first() or 0
-        start = max_lesson + 1
+        needed = 8 - count
+        start = count + 1
 
         bells = []
         for i in range(start, start + needed):
-            start_hour = 8 + (i % 8)
+            start_hour = 8 + (i - 1)
             bells.append(
                 BellSchedule(
                     lesson_number=i,
@@ -290,7 +289,7 @@ class Command(BaseCommand):
             )
         with transaction.atomic():
             BellSchedule.objects.bulk_create(bells, batch_size=200)
-        return list(BellSchedule.objects.all()[:N])
+        return list(BellSchedule.objects.all().order_by('lesson_number')[:8])
 
     def _create_study_groups(self, users, study_years, N):
         letters = 'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЭЮЯ'
@@ -364,7 +363,8 @@ class Command(BaseCommand):
     def _create_user_subjects(self, users, subjects, N):
         count = UserSubject.objects.count()
         if count >= N:
-            return
+            return list(UserSubject.objects.all()[:N])
+            
         needed = N - count
         combos = set()
         items = []
@@ -386,6 +386,8 @@ class Command(BaseCommand):
         if items:
             with transaction.atomic():
                 UserSubject.objects.bulk_create(items, batch_size=200)
+                
+        return list(UserSubject.objects.all()[:N])
 
     def _create_difficulties(self, users, study_years, subjects, N):
         count = Difficulty.objects.count()
@@ -418,7 +420,7 @@ class Command(BaseCommand):
             with transaction.atomic():
                 Difficulty.objects.bulk_create(items, batch_size=200)
 
-    def _create_workloads(self, users, groups, subjects, N):
+    def _create_workloads(self, users, groups, user_subjects, N):
         count = Workload.objects.count()
         if count >= N:
             return list(Workload.objects.all()[:N])
@@ -431,8 +433,10 @@ class Command(BaseCommand):
         while len(items) < needed and attempts < max_attempts:
             attempts += 1
             g = random.choice(groups)
-            s = random.choice(subjects)
-            t = random.choice(users)
+            us = random.choice(user_subjects)
+            s = us.subject
+            t = us.user
+            
             key = (g.id, s.id, t.id)
             if key in combos:
                 continue

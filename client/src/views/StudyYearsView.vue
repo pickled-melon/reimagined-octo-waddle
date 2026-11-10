@@ -14,6 +14,13 @@ const {
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/study-years/');
 
+const studyYearStatsConfig = [
+  { key: 'count', label: 'Всего параллелей' },
+  { key: 'avg_weekly', label: 'Ср. макс. нед.', format: 'float' },
+  { key: 'avg_daily', label: 'Ср. макс. днев.', format: 'float' },
+  { key: 'avg_groups', label: 'Ср. групп на параллель', format: 'float' },
+];
+
 const studyYearToAdd = ref({});
 const studyYearToEdit = ref({});
 
@@ -43,6 +50,13 @@ async function onDeleteYear(item) {
   await fetchStats();
 }
 
+function difficultyBadgeClass(score) {
+  if (!score) return 'text-bg-light border text-dark';
+  if (score >= 8) return 'text-bg-danger';
+  if (score >= 5) return 'text-bg-warning';
+  return 'text-bg-success';
+}
+
 onBeforeMount(async () => {
   await fetchUsers();
   await fetchData(1);
@@ -61,7 +75,7 @@ onBeforeMount(async () => {
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
     :stats="stats"
-    :stats-labels="{ avg: 'Ср. часов/нед', max: 'Макс. часов/нед', min: 'Мин. часов/нед' }"
+    :stats-config="studyYearStatsConfig"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
@@ -78,11 +92,11 @@ onBeforeMount(async () => {
                 <input type="number" class="form-control" v-model="studyYearToAdd.year" min="1" max="11" required />
               </div>
               <div class="col-md-4">
-                <label class="form-label">Недельная нагрузка</label>
+                <label class="form-label">Макс. недельная нагрузка</label>
                 <input type="number" class="form-control" v-model="studyYearToAdd.max_weekly_hours" required />
               </div>
               <div class="col-md-3">
-                <label class="form-label">Дневная нагрузка</label>
+                <label class="form-label">Макс. дневная нагрузка</label>
                 <input type="number" class="form-control" v-model="studyYearToAdd.max_daily_hours" required />
               </div>
               <div class="col-md-2">
@@ -100,6 +114,9 @@ onBeforeMount(async () => {
           <thead class="table-light sticky-top">
             <tr>
               <th>Год</th>
+              <th>Классов</th>
+              <th>Ср. учеников</th>
+              <th>Ср. трудность</th>
               <th>В неделю</th>
               <th>В день</th>
               <th>Автор</th>
@@ -109,8 +126,19 @@ onBeforeMount(async () => {
           <tbody>
             <tr v-for="item in items" :key="item.id">
               <td class="fw-semibold">{{ item.year }} класс</td>
-              <td>{{ item.max_weekly_hours }}</td>
-              <td>{{ item.max_daily_hours }}</td>
+              <td>
+                <span class="badge text-bg-light border">
+                  <i class="bi bi-people me-1"></i>{{ item.groups_count }}
+                </span>
+              </td>
+              <td>{{ item.avg_students }} чел.</td>
+              <td>
+                <span class="badge rounded-pill" :class="difficultyBadgeClass(item.avg_difficulty)">
+                  {{ item.avg_difficulty ? item.avg_difficulty.toFixed(1) : '—' }}
+                </span>
+              </td>
+              <td><strong>{{ item.max_weekly_hours }}</strong> ч.</td>
+              <td><strong>{{ item.max_daily_hours }}</strong> ч.</td>
               <td class="text-muted"><i class="bi bi-person-circle me-1"></i>{{ item.user_display }}</td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-primary me-1" @click="onStudyYearEditClick(item)" data-bs-toggle="modal" data-bs-target="#editStudyYearModal">
@@ -140,11 +168,11 @@ onBeforeMount(async () => {
                 <input type="number" class="form-control" v-model="studyYearToEdit.year" />
               </div>
               <div class="mb-3">
-                <label class="form-label">Недельная</label>
+                <label class="form-label">Макс. недельная</label>
                 <input type="number" class="form-control" v-model="studyYearToEdit.max_weekly_hours" />
               </div>
               <div class="mb-3">
-                <label class="form-label">Дневная</label>
+                <label class="form-label">Макс. дневная</label>
                 <input type="number" class="form-control" v-model="studyYearToEdit.max_daily_hours" />
               </div>
             </div>

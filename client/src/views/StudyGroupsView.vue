@@ -14,6 +14,12 @@ const {
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/study-groups/');
 
+const groupStatsConfig = [
+  { key: 'count', label: 'Всего групп' },
+  { key: 'total_students', label: 'Всего учеников' },
+  { key: 'avg_students', label: 'Ср. учеников', format: 'float' },
+];
+
 const studyYears = ref([]);
 const itemToAdd = ref({});
 const itemToEdit = ref({});
@@ -57,6 +63,13 @@ async function onDeleteGroup(item) {
   await fetchStats();
 }
 
+function loadBarClass(percent) {
+  if (percent > 100) return 'bg-danger';
+  if (percent >= 85) return 'bg-warning';
+  if (percent > 0) return 'bg-success';
+  return 'bg-secondary';
+}
+
 onBeforeMount(async () => {
   await fetchUsers();
   await fetchStudyYears();
@@ -76,7 +89,7 @@ onBeforeMount(async () => {
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
     :stats="stats"
-    :stats-labels="{ avg: 'Ср. учеников', max: 'Макс. учеников', min: 'Мин. учеников' }"
+    :stats-config="groupStatsConfig"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
@@ -133,6 +146,8 @@ onBeforeMount(async () => {
               <th>Человек</th>
               <th>Тип</th>
               <th>Год</th>
+              <th>Подгруппы</th>
+              <th>План. нагрузка</th>
               <th>Автор</th>
               <th class="text-end">Действия</th>
             </tr>
@@ -147,6 +162,21 @@ onBeforeMount(async () => {
                 </span>
               </td>
               <td>{{ item.study_year }}</td>
+              <td>
+                <span v-if="item.subgroups_count > 0" class="badge text-bg-light border">
+                  <i class="bi bi-diagram-3 me-1"></i>{{ item.subgroups_count }}
+                </span>
+                <span v-else class="text-muted">—</span>
+              </td>
+              <td style="min-width: 120px;">
+                <div class="d-flex justify-content-between small mb-1">
+                  <span>{{ item.total_hours }} / {{ item.max_weekly_hours }} ч.</span>
+                  <span v-if="item.load_percent > 100" class="text-danger fw-bold">+{{ (item.load_percent - 100).toFixed(1) }}%</span>
+                </div>
+                <div class="progress" style="height: 4px;">
+                  <div class="progress-bar" :class="loadBarClass(item.load_percent)" :style="{ width: Math.min(item.load_percent, 100) + '%' }"></div>
+                </div>
+              </td>
               <td class="text-muted"><i class="bi bi-person-circle me-1"></i>{{ item.user_display }}</td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-primary me-1" @click="onEditClick(item)" data-bs-toggle="modal" data-bs-target="#editItemModal">

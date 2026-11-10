@@ -14,6 +14,13 @@ const {
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/workloads/');
 
+const workloadStatsConfig = [
+  { key: 'count', label: 'Всего' },
+  { key: 'planned', label: 'Часов по плану' },
+  { key: 'distributed', label: 'Распределено' },
+  { key: 'unassigned', label: 'Осталось распределить' },
+];
+
 const subjects = ref([]);
 const groups = ref([]);
 const profiles = ref([]);
@@ -66,6 +73,12 @@ async function onDeleteWorkload(item) {
   await fetchStats();
 }
 
+function progressBarClass(percent) {
+  if (percent >= 100) return 'bg-success';
+  if (percent > 0) return 'bg-warning';
+  return 'bg-danger';
+}
+
 onBeforeMount(async () => {
   await fetchUsers();
   await fetchGroups();
@@ -87,7 +100,7 @@ onBeforeMount(async () => {
     :selected-user-id="selectedUserId"
     :is-superuser="isSuperuser"
     :stats="stats"
-    :stats-labels="{ avg: 'Ср. часов', max: 'Макс. часов', min: 'Мин. часов' }"
+    :stats-config="workloadStatsConfig"
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
@@ -135,7 +148,7 @@ onBeforeMount(async () => {
         <table class="table table-hover align-middle mb-0 bg-white">
           <thead class="table-light sticky-top">
             <tr>
-              <th>Часы</th>
+              <th>План / Факт</th>
               <th>Группа</th>
               <th>Учитель</th>
               <th>Дисциплина</th>
@@ -145,7 +158,16 @@ onBeforeMount(async () => {
           </thead>
           <tbody>
             <tr v-for="item in items" :key="item.id">
-              <td class="fw-semibold">{{ item.hours_count }}</td>
+              <td style="min-width: 120px;">
+                <div class="d-flex justify-content-between small mb-1">
+                  <span>{{ item.hours_count }} ч. / <strong>{{ item.distributed_lessons }} ч.</strong></span>
+                  <span v-if="item.unassigned_hours > 0" class="text-danger ms-2" :title="'Осталось распределить: ' + item.unassigned_hours">-{{ item.unassigned_hours }}</span>
+                  <i v-else class="bi bi-check-circle-fill text-success ms-2" title="Полностью распределено"></i>
+                </div>
+                <div class="progress" style="height: 6px;">
+                  <div class="progress-bar" :class="progressBarClass(item.progress_percent)" :style="{ width: item.progress_percent + '%' }"></div>
+                </div>
+              </td>
               <td>{{ item.study_group_display }}</td>
               <td>{{ item.teacher_display }}</td>
               <td>{{ item.subject_display }}</td>
