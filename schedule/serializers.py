@@ -48,11 +48,50 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 class ClassroomSerializer(serializers.ModelSerializer):
     user_display = serializers.SerializerMethodField(read_only=True)
+    weekly_lessons = serializers.SerializerMethodField()
+    utilization_percent = serializers.SerializerMethodField()
+    teachers_count = serializers.SerializerMethodField()
+    groups_count = serializers.SerializerMethodField()
+    subjects_count = serializers.SerializerMethodField()
+    daily_load = serializers.SerializerMethodField()
+
     class Meta:
         model = Classroom
-        fields = ['id', 'number', 'capacity', 'picture', 'user', 'user_display']
+        fields = [
+            'id', 'number', 'capacity', 'picture', 'user', 'user_display',
+            'weekly_lessons', 'utilization_percent',
+            'teachers_count', 'groups_count', 'subjects_count', 'daily_load',
+        ]
+
     def get_user_display(self, obj):
         return user_full_name(obj.user)
+
+    def get_weekly_lessons(self, obj):
+        return getattr(obj, 'weekly_lessons', 0)
+
+    def get_utilization_percent(self, obj):
+        weekly = getattr(obj, 'weekly_lessons', 0)
+        max_daily = self.context.get('max_daily_slots', 7)
+        total = max_daily * 6
+        if not total:
+            return 0
+        return round(weekly / total * 100, 1)
+
+    def get_teachers_count(self, obj):
+        return getattr(obj, 'teachers_count', 0)
+
+    def get_groups_count(self, obj):
+        return getattr(obj, 'groups_count', 0)
+
+    def get_subjects_count(self, obj):
+        return getattr(obj, 'subjects_count', 0)
+
+    def get_daily_load(self, obj):
+        from django.db.models import Count
+        rows = Lesson.objects.filter(classroom=obj).values('week_day').annotate(c=Count('id'))
+        by_day = {r['week_day']: r['c'] for r in rows}
+        return {str(d): by_day.get(d, 0) for d in range(1, 7)}
+
     def create(self, validated_data):
         if 'request' in self.context:
             validated_data['user'] = self.context['request'].user
@@ -115,11 +154,11 @@ class UserSubjectSerializer(serializers.ModelSerializer):
     user_display = serializers.SerializerMethodField()
     subject_display = serializers.CharField(source='subject.title', read_only=True)
     creator_display = serializers.SerializerMethodField(read_only=True)
-    
+
     class Meta:
         model = UserSubject
         fields = ['id', 'user', 'subject', 'user_display', 'subject_display', 'creator', 'creator_display']
-    
+
     def get_user_display(self, obj):
         return user_full_name(obj.user)
     def get_creator_display(self, obj):
@@ -137,7 +176,7 @@ class DifficultySerializer(serializers.ModelSerializer):
     class Meta:
         model = Difficulty
         fields = ['id', 'study_year', 'subject', 'points', 'study_year_display', 'subject_display', 'user', 'user_display']
-        
+
     def get_user_display(self, obj):
         return user_full_name(obj.user)
     def create(self, validated_data):
@@ -153,7 +192,7 @@ class StudyGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudyGroup
         fields = ['id', 'name', 'students_count', 'letter', 'type', 'type_display', 'subgroup_number', 'parent', 'study_year', 'user', 'user_display']
-        
+
     def get_user_display(self, obj):
         return user_full_name(obj.user)
     def create(self, validated_data):

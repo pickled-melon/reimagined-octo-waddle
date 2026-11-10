@@ -14,6 +14,8 @@ const {
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/classrooms/');
 
+const WEEK_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+
 const classroomToEdit = ref({});
 const classroomToAdd = ref({});
 
@@ -86,6 +88,54 @@ function onShowPicture(url) {
   classroomModalPictureUrl.value = url;
 }
 
+function dailyValue(item, day) {
+  if (!item.daily_load) return 0;
+  return item.daily_load[String(day)] || 0;
+}
+
+function weekMax(item) {
+  let m = 0;
+  for (let d = 1; d <= 6; d++) {
+    const v = dailyValue(item, d);
+    if (v > m) m = v;
+  }
+  return m || 1;
+}
+
+function dayBarHeight(item, day) {
+  const v = dailyValue(item, day);
+  if (v === 0) return 3;
+  return Math.max(3, Math.round((v / weekMax(item)) * 28));
+}
+
+function dayBarClass(item, day) {
+  const v = dailyValue(item, day);
+  if (v === 0) return 'bg-secondary-subtle';
+  const max = weekMax(item);
+  if (v >= max) return 'bg-danger';
+  if (v >= max / 2) return 'bg-warning';
+  return 'bg-primary';
+}
+
+function dayTitle(item, day) {
+  return `${WEEK_LABELS[day - 1]}: ${dailyValue(item, day)} ур.`;
+}
+
+function utilizationBarClass(percent) {
+  const num = Number(percent);
+  if (isNaN(num)) return 'bg-secondary';
+  if (num >= 85) return 'bg-danger';
+  if (num >= 60) return 'bg-warning';
+  if (num > 0) return 'bg-success';
+  return 'bg-secondary';
+}
+
+function utilizationWidth(percent) {
+  const num = Number(percent);
+  if (isNaN(num)) return '0%';
+  return Math.min(num, 100) + '%';
+}
+
 onBeforeMount(async () => {
   await fetchUsers();
   await fetchData(1);
@@ -148,22 +198,51 @@ onBeforeMount(async () => {
         Кабинетов не найдено.
       </div>
       <div v-else class="row g-3 pb-3">
-        <div v-for="item in items" :key="item.id" class="col-sm-6 col-md-4 col-lg-3">
+        <div v-for="item in items" :key="item.id" class="col-sm-6 col-md-4 col-xl-3">
           <div class="card h-100 classroom-card border-0">
-            <div class="card-body d-flex align-items-start justify-content-between">
-              <div>
-                <div class="fs-5 fw-semibold">
-                  <i class="bi bi-door-closed me-2 text-primary"></i>{{ item.number }}
+            <div class="card-body d-flex flex-column">
+              <div class="d-flex align-items-start justify-content-between mb-2">
+                <div>
+                  <div class="fs-5 fw-semibold">
+                    <i class="bi bi-door-closed me-2 text-primary"></i>{{ item.number }}
+                  </div>
+                  <div class="text-muted small mt-1">
+                    <i class="bi bi-people me-1"></i>до {{ item.capacity }} чел.
+                  </div>
+                  <div class="text-muted small mt-1" v-if="item.user_display">
+                    <i class="bi bi-person-circle me-1"></i>{{ item.user_display }}
+                  </div>
                 </div>
-                <div class="text-muted small mt-1">
-                  <i class="bi bi-people me-1"></i>до {{ item.capacity }} чел.
-                </div>
-                <div class="text-muted small mt-1" v-if="item.user_display">
-                  <i class="bi bi-person-circle me-1"></i>{{ item.user_display }}
+                <div v-if="item.picture">
+                  <img :src="item.picture" class="rounded shadow-sm" style="max-height: 60px; cursor: pointer;" alt="" data-bs-toggle="modal" data-bs-target="#classroomPictureModal" @click="onShowPicture(item.picture)">
                 </div>
               </div>
-              <div v-if="item.picture">
-                <img :src="item.picture" class="rounded shadow-sm" style="max-height: 60px; cursor: pointer;" alt="" data-bs-toggle="modal" data-bs-target="#classroomPictureModal" @click="onShowPicture(item.picture)">
+
+              <div class="small mb-1 d-flex justify-content-between">
+                <span class="text-muted"><i class="bi bi-calendar-week me-1"></i>Уроков в неделю</span>
+                <strong>{{ item.weekly_lessons }}</strong>
+              </div>
+              <div class="small mb-1 d-flex justify-content-between">
+                <span class="text-muted"><i class="bi bi-speedometer2 me-1"></i>Использование</span>
+                <strong>{{ item.utilization_percent }}%</strong>
+              </div>
+              <div class="progress mb-2" style="height: 4px;">
+                <div class="progress-bar" :class="utilizationBarClass(item.utilization_percent)" :style="{ width: utilizationWidth(item.utilization_percent) }"></div>
+              </div>
+
+              <div class="d-flex justify-content-between small text-muted mb-1">
+                <span><i class="bi bi-person-badge me-1"></i>Учителей: <strong class="text-dark">{{ item.teachers_count }}</strong></span>
+                <span><i class="bi bi-people me-1"></i>Групп: <strong class="text-dark">{{ item.groups_count }}</strong></span>
+              </div>
+              <div class="small text-muted mb-2">
+                <i class="bi bi-book me-1"></i>Предметов: <strong class="text-dark">{{ item.subjects_count }}</strong>
+              </div>
+
+              <div class="week-load mt-auto d-flex justify-content-between align-items-end gap-1 pt-2 border-top">
+                <div v-for="(label, i) in WEEK_LABELS" :key="i" class="flex-grow-1 d-flex flex-column align-items-center gap-1">
+                  <div class="day-bar rounded-1" :class="dayBarClass(item, i + 1)" :style="{ height: dayBarHeight(item, i + 1) + 'px' }" :title="dayTitle(item, i + 1)"></div>
+                  <small class="text-muted" style="font-size: 0.65rem;">{{ label }}</small>
+                </div>
               </div>
             </div>
             <div class="card-footer bg-white border-top-0 d-flex justify-content-end gap-2 pb-3">
@@ -239,5 +318,10 @@ onBeforeMount(async () => {
 .classroom-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
+}
+.day-bar {
+  width: 100%;
+  min-height: 3px;
+  transition: height 0.2s ease;
 }
 </style>

@@ -78,7 +78,7 @@ class ProfileViewSet(
         user = User.objects.create_user(username=username, password=password)
         django_login(self.request, user)
         return Response({'success': True}, status=201)
-    
+
     @action(detail=False, url_path="all", methods=['GET'])
     def get_all(self, request, *args, **kwargs):
         if not request.user.is_superuser:
@@ -93,20 +93,35 @@ class ClassroomViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if not self.request.user.is_authenticated: return qs.none()
+        if not self.request.user.is_authenticated:
+            return qs.none()
         if self.request.user.is_superuser:
             user_id = self.request.query_params.get('user')
-            if user_id: qs = qs.filter(user_id=user_id)
-            return qs
-        return qs.filter(user=self.request.user)
+            if user_id:
+                qs = qs.filter(user_id=user_id)
+        else:
+            qs = qs.filter(user=self.request.user)
+        return qs.annotate(
+            weekly_lessons=Count('lessons', distinct=True),
+            teachers_count=Count('lessons__workload__teacher', distinct=True),
+            groups_count=Count('lessons__workload__study_group', distinct=True),
+            subjects_count=Count('lessons__workload__subject', distinct=True),
+        )
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        distinct_slots = BellSchedule.objects.values('start_time').distinct().count()
+        max_daily = distinct_slots or 7
+        ctx['max_daily_slots'] = max_daily
+        return ctx
 
     @action(detail=False, methods=["GET"], url_path="stats")
     def get_stats(self, request, *args, **kwargs):
         stats = self.get_queryset().aggregate(
-            count=Count("*"),
+            count=Count("id"),
             avg=Avg("capacity"),
             max=Max("capacity"),
-            min=Min("capacity")
+            min=Min("capacity"),
         )
         serializer = StatsSerializer(instance=stats)
         return Response(serializer.data)
@@ -118,10 +133,12 @@ class SubjectViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if not self.request.user.is_authenticated: return qs.none()
+        if not self.request.user.is_authenticated:
+            return qs.none()
         if self.request.user.is_superuser:
             user_id = self.request.query_params.get('user')
-            if user_id: qs = qs.filter(user_id=user_id)
+            if user_id:
+                qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
 
@@ -138,10 +155,12 @@ class SubjectPictureViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if not self.request.user.is_authenticated: return qs.none()
+        if not self.request.user.is_authenticated:
+            return qs.none()
         if self.request.user.is_superuser:
             user_id = self.request.query_params.get('user')
-            if user_id: qs = qs.filter(user_id=user_id)
+            if user_id:
+                qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
 
@@ -158,10 +177,12 @@ class StudyYearViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if not self.request.user.is_authenticated: return qs.none()
+        if not self.request.user.is_authenticated:
+            return qs.none()
         if self.request.user.is_superuser:
             user_id = self.request.query_params.get('user')
-            if user_id: qs = qs.filter(user_id=user_id)
+            if user_id:
+                qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
 
@@ -183,10 +204,12 @@ class BellScheduleViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if not self.request.user.is_authenticated: return qs.none()
+        if not self.request.user.is_authenticated:
+            return qs.none()
         if self.request.user.is_superuser:
             user_id = self.request.query_params.get('user')
-            if user_id: qs = qs.filter(user_id=user_id)
+            if user_id:
+                qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
 
@@ -203,10 +226,12 @@ class UserSubjectViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if not self.request.user.is_authenticated: return qs.none()
+        if not self.request.user.is_authenticated:
+            return qs.none()
         if self.request.user.is_superuser:
             user_id = self.request.query_params.get('user')
-            if user_id: qs = qs.filter(creator_id=user_id)
+            if user_id:
+                qs = qs.filter(creator_id=user_id)
             return qs
         return qs.filter(creator=self.request.user)
 
@@ -223,10 +248,12 @@ class DifficultyViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if not self.request.user.is_authenticated: return qs.none()
+        if not self.request.user.is_authenticated:
+            return qs.none()
         if self.request.user.is_superuser:
             user_id = self.request.query_params.get('user')
-            if user_id: qs = qs.filter(user_id=user_id)
+            if user_id:
+                qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
 
@@ -248,10 +275,12 @@ class StudyGroupViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if not self.request.user.is_authenticated: return qs.none()
+        if not self.request.user.is_authenticated:
+            return qs.none()
         if self.request.user.is_superuser:
             user_id = self.request.query_params.get('user')
-            if user_id: qs = qs.filter(user_id=user_id)
+            if user_id:
+                qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
 
@@ -273,10 +302,12 @@ class WorkloadViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if not self.request.user.is_authenticated: return qs.none()
+        if not self.request.user.is_authenticated:
+            return qs.none()
         if self.request.user.is_superuser:
             user_id = self.request.query_params.get('user')
-            if user_id: qs = qs.filter(user_id=user_id)
+            if user_id:
+                qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
 
@@ -298,10 +329,12 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if not self.request.user.is_authenticated: return qs.none()
+        if not self.request.user.is_authenticated:
+            return qs.none()
         if self.request.user.is_superuser:
             user_id = self.request.query_params.get('user')
-            if user_id: qs = qs.filter(user_id=user_id)
+            if user_id:
+                qs = qs.filter(user_id=user_id)
             return qs
         return qs.filter(user=self.request.user)
 
