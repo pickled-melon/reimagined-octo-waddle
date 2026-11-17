@@ -51,6 +51,7 @@ class Subject(models.Model):
     title = models.CharField(max_length=200, unique=True, verbose_name="Название")
     type = models.CharField(max_length=20, choices=SUBJECT_TYPES, default='classroom', verbose_name="Тип")
     classrooms = models.ManyToManyField(Classroom, blank=True, related_name='subjects', verbose_name="Требуемые кабинеты")
+    groups = models.ManyToManyField('StudyGroup', blank=True, related_name='subjects', verbose_name="Учебные группы")
 
     class Meta:
         verbose_name = "Дисциплина"
@@ -142,6 +143,7 @@ class StudyGroup(models.Model):
     subgroup_number = models.CharField(max_length=6, choices=SUBGROUP_NUMBERS, blank=True, verbose_name="Номер подгруппы")
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subgroups', verbose_name="Родительская группа")
     study_year = models.ForeignKey(StudyYear, on_delete=models.PROTECT, related_name='groups', verbose_name="Год обучения")
+    enrollment_year = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name="Год набора")
 
     class Meta:
         verbose_name = "Учебная группа"

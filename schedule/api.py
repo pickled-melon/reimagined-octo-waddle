@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import logout as django_logout
 from django.contrib.auth import login as django_login
 from django.contrib.auth import authenticate
-from django.db.models import Avg, Count, Max, Min, Sum, F, Q
+from django.db.models import Avg, Count, Max, Min, Q, Sum
 
 from schedule.models import *
 from schedule.serializers import *
@@ -18,22 +18,35 @@ class StatsSerializer(serializers.Serializer):
     min = serializers.IntegerField(required=False)
 
 
+def apply_search(qs, request, fields):
+    search = request.query_params.get('search', '').strip()
+    if not search:
+        return qs
+    query = Q()
+    for field in fields:
+        query |= Q(**{field + '__icontains': search})
+    return qs.filter(query)
+
+
 class ProfileViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     viewsets.GenericViewSet
 ):
-    queryset = Profile.objects.select_related('user').all().order_by('id')
+    queryset = Profile.objects.select_related('user').all().order_by(
+        'user__last_name', 'user__first_name', 'patronymic_name', 'id'
+    )
     serializer_class = ProfileSerializer
+    search_fields = ['user__last_name', 'user__first_name', 'patronymic_name', 'user__username']
 
     def get_queryset(self):
         qs = super().get_queryset()
         if not self.request.user.is_authenticated:
             return qs.none()
-        if self.request.user.is_superuser:
-            return qs
-        return qs.filter(user=self.request.user)
+        if not self.request.user.is_superuser:
+            qs = qs.filter(user=self.request.user)
+        return apply_search(qs, self.request, self.search_fields)
 
     @action(detail=False, methods=["GET"], url_path="stats")
     def get_stats(self, request, *args, **kwargs):
@@ -83,13 +96,17 @@ class ProfileViewSet(
     def get_all(self, request, *args, **kwargs):
         if not request.user.is_superuser:
             return Response({'error': 'Нет прав'}, status=403)
-        users = User.objects.all().values('id', 'username').order_by('id')
+        users = User.objects.all().values(
+            'id', 'username', 'first_name', 'last_name',
+            'profile__patronymic_name'
+        ).order_by('last_name', 'first_name', 'profile__patronymic_name', 'id')
         return Response(users)
 
 
 class ClassroomViewSet(viewsets.ModelViewSet):
     queryset = Classroom.objects.all().order_by('id')
     serializer_class = ClassroomSerializer
+    search_fields = ['number']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -101,6 +118,7 @@ class ClassroomViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(user_id=user_id)
         else:
             qs = qs.filter(user=self.request.user)
+        qs = apply_search(qs, self.request, self.search_fields)
         return qs.annotate(
             weekly_lessons=Count('lessons', distinct=True),
             teachers_count=Count('lessons__workload__teacher', distinct=True),
@@ -128,8 +146,9 @@ class ClassroomViewSet(viewsets.ModelViewSet):
 
 
 class SubjectViewSet(viewsets.ModelViewSet):
-    queryset = Subject.objects.prefetch_related('classrooms', 'pictures').all().order_by('id')
+    queryset = Subject.objects.prefetch_related('classrooms', 'groups', 'pictures').all().order_by('id')
     serializer_class = SubjectSerializer
+    search_fields = ['title']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -139,8 +158,9 @@ class SubjectViewSet(viewsets.ModelViewSet):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(user_id=user_id)
-            return qs
-        return qs.filter(user=self.request.user)
+        else:
+            qs = qs.filter(user=self.request.user)
+        return apply_search(qs, self.request, self.search_fields)
 
     @action(detail=False, methods=["GET"], url_path="stats")
     def get_stats(self, request, *args, **kwargs):
@@ -148,7 +168,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
         total = qs.count()
         extra = qs.filter(type='extracurricular').count()
         extra_percent = round(extra / total * 100, 1) if total else 0
-        
+
         total_hours = qs.aggregate(total=Sum('workloads__hours_count'))['total'] or 0
         avg_diff = qs.aggregate(avg=Avg('difficulties__points'))['avg'] or 0
 
@@ -186,6 +206,7 @@ class SubjectPictureViewSet(viewsets.ModelViewSet):
 class StudyYearViewSet(viewsets.ModelViewSet):
     queryset = StudyYear.objects.all().order_by('id')
     serializer_class = StudyYearSerializer
+    search_fields = ['year']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -195,8 +216,9 @@ class StudyYearViewSet(viewsets.ModelViewSet):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(user_id=user_id)
-            return qs
-        return qs.filter(user=self.request.user)
+        else:
+            qs = qs.filter(user=self.request.user)
+        return apply_search(qs, self.request, self.search_fields)
 
     @action(detail=False, methods=["GET"], url_path="stats")
     def get_stats(self, request, *args, **kwargs):
@@ -217,6 +239,7 @@ class StudyYearViewSet(viewsets.ModelViewSet):
 class BellScheduleViewSet(viewsets.ModelViewSet):
     queryset = BellSchedule.objects.all().order_by('id')
     serializer_class = BellScheduleSerializer
+    search_fields = ['lesson_number']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -228,15 +251,15 @@ class BellScheduleViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(user_id=user_id)
         else:
             qs = qs.filter(user=self.request.user)
-        return qs
+        return apply_search(qs, self.request, self.search_fields)
 
     @action(detail=False, methods=["GET"], url_path="stats")
     def get_stats(self, request, *args, **kwargs):
         qs = self.get_queryset()
         count = qs.count()
-        
+
         total_lessons = Lesson.objects.filter(bell_schedule__in=qs).count()
-        
+
         unique_times = qs.values('start_time').distinct().count()
         avg_lessons_per_slot = round(total_lessons / unique_times, 1) if unique_times else 0
 
@@ -246,7 +269,7 @@ class BellScheduleViewSet(viewsets.ModelViewSet):
             start = datetime.combine(date.today(), b.start_time)
             end = datetime.combine(date.today(), b.end_time)
             durations.append((end - start).total_seconds() / 60)
-            
+
         avg_duration = round(sum(durations) / count, 1) if count else 0
 
         stats = {
@@ -261,6 +284,7 @@ class BellScheduleViewSet(viewsets.ModelViewSet):
 class UserSubjectViewSet(viewsets.ModelViewSet):
     queryset = UserSubject.objects.select_related('user', 'subject').all().order_by('id')
     serializer_class = UserSubjectSerializer
+    search_fields = ['user__last_name', 'subject__title']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -272,42 +296,7 @@ class UserSubjectViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(creator_id=user_id)
         else:
             qs = qs.filter(creator=self.request.user)
-        
-        return qs
-
-    @action(detail=False, methods=["GET"], url_path="stats")
-    def get_stats(self, request, *args, **kwargs):
-        qs = self.get_queryset()
-        count = qs.count()
-        teachers_count = qs.values('user').distinct().count()
-        subjects_count = qs.values('subject').distinct().count()
-        avg_subjects = round(count / teachers_count, 1) if teachers_count else 0
-
-        stats = {
-            'count': count,
-            'teachers_count': teachers_count,
-            'subjects_count': subjects_count,
-            'avg_subjects': avg_subjects,
-        }
-        return Response(stats)
-    queryset = UserSubject.objects.select_related('user', 'subject').all().order_by('id')
-    serializer_class = UserSubjectSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if not self.request.user.is_authenticated:
-            return qs.none()
-        if self.request.user.is_superuser:
-            user_id = self.request.query_params.get('user')
-            if user_id:
-                qs = qs.filter(creator_id=user_id)
-        else:
-            qs = qs.filter(creator=self.request.user)
-        
-        return qs.annotate(
-            assigned_hours=Sum('user__workloads__hours_count', filter=Q(user__workloads__subject=F('subject'))),
-            assigned_groups=Count('user__workloads__study_group', filter=Q(user__workloads__subject=F('subject')), distinct=True)
-        )
+        return apply_search(qs, self.request, self.search_fields)
 
     @action(detail=False, methods=["GET"], url_path="stats")
     def get_stats(self, request, *args, **kwargs):
@@ -329,38 +318,7 @@ class UserSubjectViewSet(viewsets.ModelViewSet):
 class DifficultyViewSet(viewsets.ModelViewSet):
     queryset = Difficulty.objects.select_related('study_year', 'subject').all().order_by('id')
     serializer_class = DifficultySerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if not self.request.user.is_authenticated:
-            return qs.none()
-        if self.request.user.is_superuser:
-            user_id = self.request.query_params.get('user')
-            if user_id:
-                qs = qs.filter(user_id=user_id)
-            return qs
-        return qs.filter(user=self.request.user)
-
-    @action(detail=False, methods=["GET"], url_path="stats")
-    def get_stats(self, request, *args, **kwargs):
-        qs = self.get_queryset()
-        
-        stats = qs.aggregate(
-            count=Count("*"),
-            avg=Avg("points"),
-            max=Max("points"),
-            min=Min("points")
-        )
-        
-        stats['hard_count'] = qs.filter(points__gte=8).count()
-        stats['easy_count'] = qs.filter(points__lte=4).count()
-
-        return Response(stats)
-
-
-class StudyGroupViewSet(viewsets.ModelViewSet):
-    queryset = StudyGroup.objects.select_related('study_year', 'parent').all().order_by('id')
-    serializer_class = StudyGroupSerializer
+    search_fields = ['subject__title', 'study_year__year']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -372,7 +330,41 @@ class StudyGroupViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(user_id=user_id)
         else:
             qs = qs.filter(user=self.request.user)
-        
+        return apply_search(qs, self.request, self.search_fields)
+
+    @action(detail=False, methods=["GET"], url_path="stats")
+    def get_stats(self, request, *args, **kwargs):
+        qs = self.get_queryset()
+
+        stats = qs.aggregate(
+            count=Count("*"),
+            avg=Avg("points"),
+            max=Max("points"),
+            min=Min("points")
+        )
+
+        stats['hard_count'] = qs.filter(points__gte=8).count()
+        stats['easy_count'] = qs.filter(points__lte=4).count()
+
+        return Response(stats)
+
+
+class StudyGroupViewSet(viewsets.ModelViewSet):
+    queryset = StudyGroup.objects.select_related('study_year', 'parent').all().order_by('id')
+    serializer_class = StudyGroupSerializer
+    search_fields = ['name', 'letter']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if not self.request.user.is_authenticated:
+            return qs.none()
+        if self.request.user.is_superuser:
+            user_id = self.request.query_params.get('user')
+            if user_id:
+                qs = qs.filter(user_id=user_id)
+        else:
+            qs = qs.filter(user=self.request.user)
+        qs = apply_search(qs, self.request, self.search_fields)
         return qs.annotate(
             total_hours=Sum('workloads__hours_count'),
             subgroups_count=Count('subgroups', distinct=True)
@@ -391,6 +383,7 @@ class StudyGroupViewSet(viewsets.ModelViewSet):
 class WorkloadViewSet(viewsets.ModelViewSet):
     queryset = Workload.objects.select_related('study_group', 'teacher', 'subject').all().order_by('id')
     serializer_class = WorkloadSerializer
+    search_fields = ['teacher__last_name', 'subject__title', 'study_group__name']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -402,6 +395,7 @@ class WorkloadViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(user_id=user_id)
         else:
             qs = qs.filter(user=self.request.user)
+        qs = apply_search(qs, self.request, self.search_fields)
         return qs.annotate(distributed_lessons=Count('lessons', distinct=True))
 
     @action(detail=False, methods=["GET"], url_path="stats")
@@ -421,6 +415,13 @@ class WorkloadViewSet(viewsets.ModelViewSet):
 class LessonViewSet(viewsets.ModelViewSet):
     queryset = Lesson.objects.select_related('workload__study_group', 'workload__teacher', 'workload__subject', 'classroom', 'bell_schedule').all().order_by('id')
     serializer_class = LessonSerializer
+    filter_params = {
+        'teacher': 'workload__teacher_id',
+        'group': 'workload__study_group_id',
+        'subject': 'workload__subject_id',
+        'classroom': 'classroom_id',
+    }
+    search_fields = ['workload__teacher__last_name', 'workload__subject__title', 'classroom__number', 'workload__study_group__name']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -430,8 +431,16 @@ class LessonViewSet(viewsets.ModelViewSet):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(user_id=user_id)
-            return qs
-        return qs.filter(user=self.request.user)
+        else:
+            qs = qs.filter(user=self.request.user)
+        for param, field in self.filter_params.items():
+            value = self.request.query_params.get(param)
+            if value:
+                try:
+                    qs = qs.filter(**{field: value})
+                except (ValueError, TypeError):
+                    continue
+        return apply_search(qs, self.request, self.search_fields)
 
     @action(detail=False, methods=["GET"], url_path="stats")
     def get_stats(self, request, *args, **kwargs):

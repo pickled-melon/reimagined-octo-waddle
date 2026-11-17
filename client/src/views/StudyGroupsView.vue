@@ -39,7 +39,10 @@ async function fetchStudyYears() {
 }
 
 async function onAdd() {
-  await axios.post('/api/study-groups/', { ...itemToAdd.value });
+  await axios.post('/api/study-groups/', {
+    ...itemToAdd.value,
+    enrollment_year: itemToAdd.value.enrollment_year || null,
+  });
   itemToAdd.value = {};
   await fetchData(1);
   await fetchStats();
@@ -50,9 +53,10 @@ function onEditClick(item) {
 }
 
 async function onUpdate() {
-  await axios.put(`/api/study-groups/${itemToEdit.value.id}/`, {
+  await axios.patch(`/api/study-groups/${itemToEdit.value.id}/`, {
     students_count: itemToEdit.value.students_count,
     letter: itemToEdit.value.letter,
+    enrollment_year: itemToEdit.value.enrollment_year || null,
   });
   await fetchData(currentPage.value);
   await fetchStats();
@@ -115,7 +119,7 @@ onBeforeMount(async () => {
                   <option v-for="t in GROUP_TYPES" :key="t.value" :value="t.value">{{ t.label }}</option>
                 </select>
               </div>
-              <div class="col-md-2">
+              <div class="col-md-1">
                 <label class="form-label">№ подгруппы</label>
                 <select class="form-select" v-model="itemToAdd.subgroup_number">
                   <option value="">—</option>
@@ -128,7 +132,11 @@ onBeforeMount(async () => {
                   <option v-for="y in studyYears" :key="y.id" :value="y.id">{{ y.year }}</option>
                 </select>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
+                <label class="form-label">Год набора</label>
+                <input type="number" class="form-control" min="2000" max="2099" placeholder="2024" v-model="itemToAdd.enrollment_year" />
+              </div>
+              <div class="col-md-2">
                 <button class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Добавить</button>
               </div>
             </div>
@@ -146,6 +154,7 @@ onBeforeMount(async () => {
               <th>Человек</th>
               <th>Тип</th>
               <th>Год</th>
+              <th>Год набора</th>
               <th>Подгруппы</th>
               <th>План. нагрузка</th>
               <th>Автор</th>
@@ -162,6 +171,10 @@ onBeforeMount(async () => {
                 </span>
               </td>
               <td>{{ item.study_year }}</td>
+              <td>
+                <span v-if="item.enrollment_year">{{ item.enrollment_year }}</span>
+                <span v-else class="text-muted">—</span>
+              </td>
               <td>
                 <span v-if="item.subgroups_count > 0" class="badge text-bg-light border">
                   <i class="bi bi-diagram-3 me-1"></i>{{ item.subgroups_count }}
@@ -208,6 +221,10 @@ onBeforeMount(async () => {
               <div class="mb-3">
                 <label class="form-label">Литера</label>
                 <input class="form-control" maxlength="1" v-model="itemToEdit.letter" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Год набора</label>
+                <input type="number" class="form-control" min="2000" max="2099" placeholder="2024" v-model="itemToEdit.enrollment_year" />
               </div>
             </div>
             <div class="modal-footer bg-light">

@@ -22,8 +22,9 @@ const subjectStatsConfig = [
 ];
 
 const classrooms = ref([]);
-const subjectToAdd = ref({ classrooms: [] });
-const subjectToEdit = ref({ classrooms: [] });
+const groups = ref([]);
+const subjectToAdd = ref({ classrooms: [], groups: [] });
+const subjectToEdit = ref({ classrooms: [], groups: [] });
 
 const albumPictureRef = ref();
 const albumAddImagesUrls = ref([]);
@@ -48,6 +49,16 @@ async function fetchClassrooms() {
   classrooms.value = r.data.results;
 }
 
+async function fetchGroups() {
+  const r = await axios.get('/api/study-groups/?page_size=1000');
+  groups.value = r.data.results;
+}
+
+function groupName(id) {
+  const group = groups.value.find(g => g.id === id);
+  return group ? group.name : id;
+}
+
 async function onSubjectAdd() {
   const formData = new FormData();
   formData.set('title', subjectToAdd.value.title);
@@ -56,16 +67,24 @@ async function onSubjectAdd() {
   for (const id of selected) {
     formData.append('classrooms', id);
   }
+  const selectedGroups = subjectToAdd.value.groups || [];
+  for (const id of selectedGroups) {
+    formData.append('groups', id);
+  }
   await axios.post('/api/subjects/', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
-  subjectToAdd.value = { classrooms: [] };
+  subjectToAdd.value = { classrooms: [], groups: [] };
   await fetchData(1);
   await fetchStats();
 }
 
 function onSubjectEditClick(subject) {
-  subjectToEdit.value = { ...subject, classrooms: [...(subject.classrooms || [])] };
+  subjectToEdit.value = {
+    ...subject,
+    classrooms: [...(subject.classrooms || [])],
+    groups: [...(subject.groups || [])]
+  };
 }
 
 async function onUpdateSubject() {
@@ -75,6 +94,10 @@ async function onUpdateSubject() {
   const selected = subjectToEdit.value.classrooms || [];
   for (const id of selected) {
     formData.append('classrooms', id);
+  }
+  const selectedGroups = subjectToEdit.value.groups || [];
+  for (const id of selectedGroups) {
+    formData.append('groups', id);
   }
   await axios.put(`/api/subjects/${subjectToEdit.value.id}/`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -134,6 +157,7 @@ function onShowPicture(url) {
 onBeforeMount(async () => {
   await fetchUsers();
   await fetchClassrooms();
+  await fetchGroups();
   await fetchData(1);
   await fetchStats();
 });
@@ -162,20 +186,26 @@ onBeforeMount(async () => {
         <div class="card-body">
           <form @submit.prevent="onSubjectAdd">
             <div class="row g-3 align-items-end">
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label class="form-label">Название</label>
                 <input class="form-control" v-model="subjectToAdd.title" required />
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <label class="form-label">Тип</label>
                 <select class="form-select" v-model="subjectToAdd.type">
                   <option v-for="t in SUBJECT_TYPES" :key="t.value" :value="t.value">{{ t.label }}</option>
                 </select>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <label class="form-label">Требуемые кабинеты</label>
                 <select class="form-select" multiple v-model="subjectToAdd.classrooms">
                   <option v-for="c in classrooms" :key="c.id" :value="c.id">{{ c.number }}</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Учебные группы</label>
+                <select class="form-select" multiple v-model="subjectToAdd.groups">
+                  <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
                 </select>
               </div>
               <div class="col-md-2">
@@ -197,6 +227,7 @@ onBeforeMount(async () => {
               <th>Часы/нед.</th>
               <th>Трудность</th>
               <th>Кабинеты</th>
+              <th>Группы</th>
               <th>Альбом</th>
               <th>Автор</th>
               <th class="text-end">Действия</th>
@@ -224,6 +255,10 @@ onBeforeMount(async () => {
                 <span class="badge text-bg-secondary" title="Требуемые кабинеты">
                   <i class="bi bi-door-closed me-1"></i>{{ item.classrooms_count }}
                 </span>
+              </td>
+              <td>
+                <span v-for="gid in item.groups" :key="gid" class="badge text-bg-secondary me-1">{{ groupName(gid) }}</span>
+                <span v-if="!item.groups || !item.groups.length" class="text-muted small fst-italic">—</span>
               </td>
               <td>
                 <div v-if="item.pictures && item.pictures.length" class="d-flex gap-1 flex-wrap">
@@ -272,6 +307,12 @@ onBeforeMount(async () => {
                 <label class="form-label">Требуемые кабинеты</label>
                 <select class="form-select" multiple v-model="subjectToEdit.classrooms">
                   <option v-for="c in classrooms" :key="c.id" :value="c.id">{{ c.number }}</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Учебные группы</label>
+                <select class="form-select" multiple v-model="subjectToEdit.groups">
+                  <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
                 </select>
               </div>
             </div>

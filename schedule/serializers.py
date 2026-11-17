@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.db.models import Sum, Avg
+from django.contrib.auth.models import User
 from schedule.models import *
 
 def user_full_name(user):
@@ -112,6 +113,7 @@ class SubjectPictureSerializer(serializers.ModelSerializer):
 
 class SubjectSerializer(serializers.ModelSerializer):
     classrooms = serializers.PrimaryKeyRelatedField(many=True, queryset=Classroom.objects.all(), required=False)
+    groups = serializers.PrimaryKeyRelatedField(many=True, queryset=StudyGroup.objects.all(), required=False)
     type_display = serializers.CharField(source='get_type_display', read_only=True)
     pictures = SubjectPictureSerializer(many=True, read_only=True)
     user_display = serializers.SerializerMethodField(read_only=True)
@@ -119,11 +121,13 @@ class SubjectSerializer(serializers.ModelSerializer):
     total_hours = serializers.SerializerMethodField()
     avg_difficulty = serializers.SerializerMethodField()
     classrooms_count = serializers.SerializerMethodField()
+    groups_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Subject
         fields = [
             'id', 'title', 'type', 'type_display', 'classrooms', 'classrooms_count',
+            'groups', 'groups_count',
             'pictures', 'user', 'user_display', 'total_hours', 'avg_difficulty'
         ]
 
@@ -142,6 +146,9 @@ class SubjectSerializer(serializers.ModelSerializer):
 
     def get_classrooms_count(self, obj):
         return obj.classrooms.count()
+
+    def get_groups_count(self, obj):
+        return obj.groups.count()
 
     def create(self, validated_data):
         if 'request' in self.context:
@@ -283,7 +290,7 @@ class StudyGroupSerializer(serializers.ModelSerializer):
         model = StudyGroup
         fields = [
             'id', 'name', 'students_count', 'letter', 'type', 'type_display', 
-            'subgroup_number', 'parent', 'study_year', 'user', 'user_display',
+            'subgroup_number', 'parent', 'study_year', 'enrollment_year', 'user', 'user_display',
             'total_hours', 'subgroups_count', 'max_weekly_hours', 'load_percent'
         ]
 
@@ -364,13 +371,23 @@ class LessonSerializer(serializers.ModelSerializer):
     teacher_display = serializers.SerializerMethodField()
     week_day_display = serializers.CharField(source='get_week_day_display', read_only=True)
     user_display = serializers.SerializerMethodField(read_only=True)
+    teacher_id = serializers.IntegerField(source='workload.teacher_id', read_only=True)
+    study_group_id = serializers.IntegerField(source='workload.study_group_id', read_only=True)
+    subject_id = serializers.IntegerField(source='workload.subject_id', read_only=True)
+    study_group_display = serializers.CharField(source='workload.study_group.name', read_only=True)
+    subject_display = serializers.CharField(source='workload.subject.title', read_only=True)
+    teacher = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True, required=False)
+    study_group = serializers.PrimaryKeyRelatedField(queryset=StudyGroup.objects.all(), write_only=True, required=False)
+    subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), write_only=True, required=False)
 
     class Meta:
         model = Lesson
         fields = [
             'id', 'week_day', 'week_day_display', 'is_test', 'workload', 'classroom', 
             'bell_schedule', 'workload_display', 'teacher_display', 'classroom_display', 
-            'bell_schedule_display', 'user', 'user_display'
+            'bell_schedule_display', 'user', 'user_display',
+            'teacher_id', 'study_group_id', 'subject_id', 'study_group_display', 'subject_display',
+            'teacher', 'study_group', 'subject'
         ]
 
     def get_workload_display(self, obj):
@@ -395,6 +412,20 @@ class LessonSerializer(serializers.ModelSerializer):
 
     def get_user_display(self, obj):
         return user_full_name(obj.user)
+
+    def validate(self, attrs):
+        workload = attrs.get('workload') or getattr(self.instance, 'workload', None)
+        for field, attr in (
+            ('teacher', 'teacher_id'),
+            ('study_group', 'study_group_id'),
+            ('subject', 'subject_id'),
+        ):
+            value = attrs.pop(field, None)
+            if value is None or workload is None:
+                continue
+            if value.pk != getattr(workload, attr):
+                raise serializers.ValidationError({field: 'Не совпадает с выбранной нагрузкой'})
+        return attrs
 
     def create(self, validated_data):
         if 'request' in self.context:

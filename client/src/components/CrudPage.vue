@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, inject, ref } from 'vue';
 import Pagination from '@/components/Pagination.vue';
+import { crudLoadingKey, crudSearchKey } from '@/composables/useCrud';
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -18,6 +19,23 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:selectedUserId', 'update:currentPage']);
+
+const loading = inject(crudLoadingKey, ref(false));
+const search = inject(crudSearchKey, ref(''));
+
+function onSearchInput(event) {
+  search.value = event.target.value;
+}
+
+function userLabel(u) {
+  const last = (u.last_name || '').trim();
+  const first = (u.first_name || '').trim();
+  const patr = (u.profile__patronymic_name || '').trim();
+  if (!last && !first) return u.username;
+  const initials = [first ? first[0] + '.' : '', patr ? patr[0] + '.' : '']
+    .filter(Boolean).join('');
+  return [last, initials].filter(Boolean).join(' ');
+}
 
 const displayStats = computed(() => {
   if (!props.stats) return [];
@@ -73,9 +91,18 @@ function formatStat(value, format) {
               style="width: 200px;"
             >
               <option value="">Все пользователи</option>
-              <option v-for="u in users" :key="u.id" :value="u.id">{{ u.username }}</option>
+              <option v-for="u in users" :key="u.id" :value="u.id">{{ userLabel(u) }}</option>
             </select>
           </div>
+          <input
+            type="text"
+            class="form-control border-primary"
+            style="width: 220px;"
+            placeholder="Поиск..."
+            :value="search"
+            @input="onSearchInput"
+          />
+          <slot name="header-actions"></slot>
         </div>
       </div>
 
@@ -83,7 +110,12 @@ function formatStat(value, format) {
     </div>
 
     <div class="scroll-area">
-      <slot name="content"></slot>
+      <div v-if="loading" class="d-flex align-items-center justify-content-center h-100">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Загрузка…</span>
+        </div>
+      </div>
+      <slot v-else name="content"></slot>
     </div>
 
     <div class="bottom-panel mt-3">

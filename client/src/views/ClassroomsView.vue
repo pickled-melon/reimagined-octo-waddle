@@ -10,7 +10,7 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize, loading, stats,
+  items, totalCount, currentPage, pageSize, stats,
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/classrooms/');
 
@@ -191,10 +191,7 @@ onBeforeMount(async () => {
     </template>
 
     <template #content>
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status"></div>
-      </div>
-      <div v-else-if="items.length === 0" class="alert alert-info shadow-sm border-0">
+      <div v-if="items.length === 0" class="alert alert-info shadow-sm border-0">
         Кабинетов не найдено.
       </div>
       <div v-else class="row g-3 pb-3">

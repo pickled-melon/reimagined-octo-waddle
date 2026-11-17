@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onBeforeMount } from 'vue';
+import { ref, computed, onBeforeMount } from 'vue';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { useCrud } from '@/composables/useCrud';
@@ -10,9 +10,30 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize, stats,
+  items, totalCount, currentPage, pageSize, stats, filters,
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/lessons/');
+
+const hasActiveFilter = computed(() => Object.keys(filters.value).length > 0);
+
+function onFilterClick(type, value) {
+  if (value === null || value === undefined || value === '') return;
+  const next = { ...filters.value };
+  if (next[type] === value) {
+    delete next[type];
+  } else {
+    next[type] = value;
+  }
+  filters.value = next;
+}
+
+function resetFilters() {
+  filters.value = {};
+}
+
+function isActiveFilter(type, value) {
+  return filters.value[type] === value;
+}
 
 const lessonStatsConfig = [
   { key: 'count', label: 'Всего уроков' },
@@ -26,6 +47,15 @@ const classrooms = ref([]);
 const bells = ref([]);
 const itemToAdd = ref({});
 const itemToEdit = ref({});
+
+const workloadMap = computed(() => {
+  const map = {};
+  for (const w of workloads.value) map[w.id] = w;
+  return map;
+});
+
+const selectedWorkloadAdd = computed(() => workloadMap.value[itemToAdd.value.workload] || null);
+const selectedWorkloadEdit = computed(() => workloadMap.value[itemToEdit.value.workload] || null);
 
 const WEEK_DAYS = [
   { value: 1, label: 'Пн' }, { value: 2, label: 'Вт' }, { value: 3, label: 'Ср' },
@@ -110,6 +140,12 @@ onBeforeMount(async () => {
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
+    <template #header-actions>
+      <button class="btn btn-outline-secondary btn-sm" :disabled="!hasActiveFilter" @click="resetFilters">
+        <i class="bi bi-x-circle me-1"></i>Сбросить фильтр
+      </button>
+    </template>
+
     <template #form>
       <div class="card shadow-sm mb-3 border-0">
         <div class="card-header bg-white border-bottom-0 pt-3">
@@ -152,6 +188,20 @@ onBeforeMount(async () => {
                 <button class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i></button>
               </div>
             </div>
+            <div v-if="selectedWorkloadAdd" class="row g-3 mt-1">
+              <div class="col-md-4">
+                <label class="form-label text-muted small mb-0">Учитель</label>
+                <div class="form-control-plaintext py-0">{{ selectedWorkloadAdd.teacher_display }}</div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label text-muted small mb-0">Группа</label>
+                <div class="form-control-plaintext py-0">{{ selectedWorkloadAdd.study_group_display }}</div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label text-muted small mb-0">Предмет</label>
+                <div class="form-control-plaintext py-0">{{ selectedWorkloadAdd.subject_display }}</div>
+              </div>
+            </div>
           </form>
         </div>
       </div>
@@ -164,7 +214,8 @@ onBeforeMount(async () => {
             <tr>
               <th>День</th>
               <th>Слот</th>
-              <th>Класс / Предмет</th>
+              <th>Группа</th>
+              <th>Предмет</th>
               <th>Учитель</th>
               <th>Кабинет</th>
               <th>Контр.</th>
@@ -176,9 +227,34 @@ onBeforeMount(async () => {
             <tr v-for="item in items" :key="item.id">
               <td class="fw-semibold">{{ item.week_day_display }}</td>
               <td>{{ item.bell_schedule_display }}</td>
-              <td>{{ item.workload_display }}</td>
-              <td>{{ item.teacher_display }}</td>
-              <td><span class="badge text-bg-light border">Каб. {{ item.classroom_display }}</span></td>
+              <td>
+                <span
+                  class="filter-cell"
+                  :class="{ 'filter-cell-active': isActiveFilter('group', item.study_group_id) }"
+                  @click="onFilterClick('group', item.study_group_id)"
+                >{{ item.study_group_display }}</span>
+              </td>
+              <td>
+                <span
+                  class="filter-cell"
+                  :class="{ 'filter-cell-active': isActiveFilter('subject', item.subject_id) }"
+                  @click="onFilterClick('subject', item.subject_id)"
+                >{{ item.subject_display }}</span>
+              </td>
+              <td>
+                <span
+                  class="filter-cell"
+                  :class="{ 'filter-cell-active': isActiveFilter('teacher', item.teacher_id) }"
+                  @click="onFilterClick('teacher', item.teacher_id)"
+                >{{ item.teacher_display }}</span>
+              </td>
+              <td>
+                <span
+                  class="badge text-bg-light border filter-cell"
+                  :class="{ 'filter-cell-active': isActiveFilter('classroom', item.classroom) }"
+                  @click="onFilterClick('classroom', item.classroom)"
+                >Каб. {{ item.classroom_display }}</span>
+              </td>
               <td>
                 <span v-if="item.is_test" class="badge text-bg-danger rounded-pill">Да</span>
                 <span v-else class="text-muted">—</span>
@@ -218,6 +294,20 @@ onBeforeMount(async () => {
                 <select class="form-select" v-model="itemToEdit.workload">
                   <option v-for="w in workloads" :key="w.id" :value="w.id">{{ workloadLabel(w) }}</option>
                 </select>
+                <div v-if="selectedWorkloadEdit" class="row g-3 mt-1">
+                  <div class="col-md-4">
+                    <label class="form-label text-muted small mb-0">Учитель</label>
+                    <div class="form-control-plaintext py-0">{{ selectedWorkloadEdit.teacher_display }}</div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label text-muted small mb-0">Группа</label>
+                    <div class="form-control-plaintext py-0">{{ selectedWorkloadEdit.study_group_display }}</div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label text-muted small mb-0">Предмет</label>
+                    <div class="form-control-plaintext py-0">{{ selectedWorkloadEdit.subject_display }}</div>
+                  </div>
+                </div>
               </div>
               <div class="mb-3">
                 <label class="form-label">Кабинет</label>
@@ -252,5 +342,18 @@ onBeforeMount(async () => {
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+.filter-cell {
+  cursor: pointer;
+}
+
+.filter-cell:hover {
+  text-decoration: underline;
+}
+
+.filter-cell-active {
+  font-weight: 700;
+  color: var(--bs-primary);
 }
 </style>
