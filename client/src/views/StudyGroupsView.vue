@@ -128,7 +128,8 @@ onBeforeMount(async () => {
               </div>
               <div class="col-md-2">
                 <label class="form-label">Год</label>
-                <select class="form-select" v-model="itemToAdd.study_year" required>
+                <select class="form-select" v-model="itemToAdd.study_year" required :disabled="studyYears.length === 0">
+                  <option disabled v-if="studyYears.length === 0">Загрузка...</option>
                   <option v-for="y in studyYears" :key="y.id" :value="y.id">{{ y.year }}</option>
                 </select>
               </div>

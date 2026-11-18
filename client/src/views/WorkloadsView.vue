@@ -24,6 +24,7 @@ const workloadStatsConfig = [
 const subjects = ref([]);
 const groups = ref([]);
 const profiles = ref([]);
+const formLoading = ref(true);
 const itemToAdd = ref({});
 const itemToEdit = ref({});
 
@@ -81,9 +82,9 @@ function progressBarClass(percent) {
 
 onBeforeMount(async () => {
   await fetchUsers();
-  await fetchGroups();
-  await fetchProfiles();
-  await fetchSubjects();
+  await Promise.all([fetchGroups(), fetchProfiles(), fetchSubjects()]).finally(() => {
+    formLoading.value = false;
+  });
   await fetchData(1);
   await fetchStats();
 });
@@ -118,19 +119,22 @@ onBeforeMount(async () => {
               </div>
               <div class="col-md-3">
                 <label class="form-label">Группа</label>
-                <select class="form-select" v-model="itemToAdd.study_group" required>
+                <select class="form-select" v-model="itemToAdd.study_group" required :disabled="groups.length === 0">
+                  <option disabled v-if="groups.length === 0">Загрузка...</option>
                   <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
                 </select>
               </div>
               <div class="col-md-3">
                 <label class="form-label">Учитель</label>
-                <select class="form-select" v-model="itemToAdd.teacher" required>
+                <select class="form-select" v-model="itemToAdd.teacher" required :disabled="profiles.length === 0">
+                  <option disabled v-if="profiles.length === 0">Загрузка...</option>
                   <option v-for="p in profiles" :key="p.id" :value="p.user">{{ teacherLabel(p) }}</option>
                 </select>
               </div>
               <div class="col-md-2">
                 <label class="form-label">Дисциплина</label>
-                <select class="form-select" v-model="itemToAdd.subject" required>
+                <select class="form-select" v-model="itemToAdd.subject" required :disabled="subjects.length === 0">
+                  <option disabled v-if="subjects.length === 0">Загрузка...</option>
                   <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.title }}</option>
                 </select>
               </div>
@@ -195,32 +199,37 @@ onBeforeMount(async () => {
               <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-              <div class="mb-3">
-                <label class="form-label">Часы</label>
-                <input type="number" class="form-control" v-model="itemToEdit.hours_count" />
+              <div v-if="formLoading" class="d-flex justify-content-center py-4">
+                <div class="spinner-border text-primary"></div>
               </div>
-              <div class="mb-3">
-                <label class="form-label">Группа</label>
-                <select class="form-select" v-model="itemToEdit.study_group">
-                  <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Учитель</label>
-                <select class="form-select" v-model="itemToEdit.teacher">
-                  <option v-for="p in profiles" :key="p.id" :value="p.user">{{ teacherLabel(p) }}</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Дисциплина</label>
-                <select class="form-select" v-model="itemToEdit.subject">
-                  <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.title }}</option>
-                </select>
-              </div>
+              <template v-else>
+                <div class="mb-3">
+                  <label class="form-label">Часы</label>
+                  <input type="number" class="form-control" v-model="itemToEdit.hours_count" />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Группа</label>
+                  <select class="form-select" v-model="itemToEdit.study_group">
+                    <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Учитель</label>
+                  <select class="form-select" v-model="itemToEdit.teacher">
+                    <option v-for="p in profiles" :key="p.id" :value="p.user">{{ teacherLabel(p) }}</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Дисциплина</label>
+                  <select class="form-select" v-model="itemToEdit.subject">
+                    <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.title }}</option>
+                  </select>
+                </div>
+              </template>
             </div>
             <div class="modal-footer bg-light">
               <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-              <button class="btn btn-primary" data-bs-dismiss="modal" @click="onUpdate">Сохранить</button>
+              <button class="btn btn-primary" data-bs-dismiss="modal" @click="onUpdate" :disabled="formLoading">Сохранить</button>
             </div>
           </div>
         </div>

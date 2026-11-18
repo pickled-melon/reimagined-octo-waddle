@@ -24,6 +24,7 @@ const difficultyStatsConfig = [
 
 const subjects = ref([]);
 const studyYears = ref([]);
+const formLoading = ref(true);
 const itemToAdd = ref({});
 const itemToEdit = ref({});
 
@@ -71,8 +72,9 @@ function categoryBadgeClass(category) {
 
 onBeforeMount(async () => {
   await fetchUsers();
-  await fetchStudyYears();
-  await fetchSubjects();
+  await Promise.all([fetchStudyYears(), fetchSubjects()]).finally(() => {
+    formLoading.value = false;
+  });
   await fetchData(1);
   await fetchStats();
 });
@@ -103,13 +105,15 @@ onBeforeMount(async () => {
             <div class="row g-3 align-items-end">
               <div class="col-md-4">
                 <label class="form-label">Год обучения</label>
-                <select class="form-select" v-model="itemToAdd.study_year" required>
+                <select class="form-select" v-model="itemToAdd.study_year" required :disabled="studyYears.length === 0">
+                  <option disabled v-if="studyYears.length === 0">Загрузка...</option>
                   <option v-for="y in studyYears" :key="y.id" :value="y.id">{{ y.year }}</option>
                 </select>
               </div>
               <div class="col-md-4">
                 <label class="form-label">Дисциплина</label>
-                <select class="form-select" v-model="itemToAdd.subject" required>
+                <select class="form-select" v-model="itemToAdd.subject" required :disabled="subjects.length === 0">
+                  <option disabled v-if="subjects.length === 0">Загрузка...</option>
                   <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.title }}</option>
                 </select>
               </div>
@@ -173,26 +177,31 @@ onBeforeMount(async () => {
               <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-              <div class="mb-3">
-                <label class="form-label">Год обучения</label>
-                <select class="form-select" v-model="itemToEdit.study_year">
-                  <option v-for="y in studyYears" :key="y.id" :value="y.id">{{ y.year }}</option>
-                </select>
+              <div v-if="formLoading" class="d-flex justify-content-center py-4">
+                <div class="spinner-border text-primary"></div>
               </div>
-              <div class="mb-3">
-                <label class="form-label">Дисциплина</label>
-                <select class="form-select" v-model="itemToEdit.subject">
-                  <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.title }}</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Баллы</label>
-                <input type="number" class="form-control" v-model="itemToEdit.points" />
-              </div>
+              <template v-else>
+                <div class="mb-3">
+                  <label class="form-label">Год обучения</label>
+                  <select class="form-select" v-model="itemToEdit.study_year">
+                    <option v-for="y in studyYears" :key="y.id" :value="y.id">{{ y.year }}</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Дисциплина</label>
+                  <select class="form-select" v-model="itemToEdit.subject">
+                    <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.title }}</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Баллы</label>
+                  <input type="number" class="form-control" v-model="itemToEdit.points" />
+                </div>
+              </template>
             </div>
             <div class="modal-footer bg-light">
               <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-              <button class="btn btn-primary" data-bs-dismiss="modal" @click="onUpdate">Сохранить</button>
+              <button class="btn btn-primary" data-bs-dismiss="modal" @click="onUpdate" :disabled="formLoading">Сохранить</button>
             </div>
           </div>
         </div>

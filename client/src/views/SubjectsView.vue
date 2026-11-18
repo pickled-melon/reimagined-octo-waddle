@@ -23,6 +23,7 @@ const subjectStatsConfig = [
 
 const classrooms = ref([]);
 const groups = ref([]);
+const formLoading = ref(true);
 const subjectToAdd = ref({ classrooms: [], groups: [] });
 const subjectToEdit = ref({ classrooms: [], groups: [] });
 
@@ -156,8 +157,9 @@ function onShowPicture(url) {
 
 onBeforeMount(async () => {
   await fetchUsers();
-  await fetchClassrooms();
-  await fetchGroups();
+  await Promise.all([fetchClassrooms(), fetchGroups()]).finally(() => {
+    formLoading.value = false;
+  });
   await fetchData(1);
   await fetchStats();
 });
@@ -198,13 +200,15 @@ onBeforeMount(async () => {
               </div>
               <div class="col-md-2">
                 <label class="form-label">Требуемые кабинеты</label>
-                <select class="form-select" multiple v-model="subjectToAdd.classrooms">
+                <select class="form-select" multiple v-model="subjectToAdd.classrooms" :disabled="classrooms.length === 0">
+                  <option disabled v-if="classrooms.length === 0">Загрузка...</option>
                   <option v-for="c in classrooms" :key="c.id" :value="c.id">{{ c.number }}</option>
                 </select>
               </div>
               <div class="col-md-3">
                 <label class="form-label">Учебные группы</label>
-                <select class="form-select" multiple v-model="subjectToAdd.groups">
+                <select class="form-select" multiple v-model="subjectToAdd.groups" :disabled="groups.length === 0">
+                  <option disabled v-if="groups.length === 0">Загрузка...</option>
                   <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
                 </select>
               </div>
@@ -293,32 +297,37 @@ onBeforeMount(async () => {
               <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-              <div class="mb-3">
-                <label class="form-label">Название</label>
-                <input class="form-control" v-model="subjectToEdit.title" />
+              <div v-if="formLoading" class="d-flex justify-content-center py-4">
+                <div class="spinner-border text-primary"></div>
               </div>
-              <div class="mb-3">
-                <label class="form-label">Тип</label>
-                <select class="form-select" v-model="subjectToEdit.type">
-                  <option v-for="t in SUBJECT_TYPES" :key="t.value" :value="t.value">{{ t.label }}</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Требуемые кабинеты</label>
-                <select class="form-select" multiple v-model="subjectToEdit.classrooms">
-                  <option v-for="c in classrooms" :key="c.id" :value="c.id">{{ c.number }}</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Учебные группы</label>
-                <select class="form-select" multiple v-model="subjectToEdit.groups">
-                  <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
-                </select>
-              </div>
+              <template v-else>
+                <div class="mb-3">
+                  <label class="form-label">Название</label>
+                  <input class="form-control" v-model="subjectToEdit.title" />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Тип</label>
+                  <select class="form-select" v-model="subjectToEdit.type">
+                    <option v-for="t in SUBJECT_TYPES" :key="t.value" :value="t.value">{{ t.label }}</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Требуемые кабинеты</label>
+                  <select class="form-select" multiple v-model="subjectToEdit.classrooms">
+                    <option v-for="c in classrooms" :key="c.id" :value="c.id">{{ c.number }}</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Учебные группы</label>
+                  <select class="form-select" multiple v-model="subjectToEdit.groups">
+                    <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+                  </select>
+                </div>
+              </template>
             </div>
             <div class="modal-footer bg-light">
               <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-              <button class="btn btn-primary" data-bs-dismiss="modal" @click="onUpdateSubject">Сохранить</button>
+              <button class="btn btn-primary" data-bs-dismiss="modal" @click="onUpdateSubject" :disabled="formLoading">Сохранить</button>
             </div>
           </div>
         </div>

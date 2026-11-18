@@ -45,6 +45,7 @@ const lessonStatsConfig = [
 const workloads = ref([]);
 const classrooms = ref([]);
 const bells = ref([]);
+const formLoading = ref(true);
 const itemToAdd = ref({});
 const itemToEdit = ref({});
 
@@ -117,9 +118,9 @@ async function onDeleteLesson(item) {
 
 onBeforeMount(async () => {
   await fetchUsers();
-  await fetchWorkloads();
-  await fetchClassrooms();
-  await fetchBells();
+  await Promise.all([fetchWorkloads(), fetchClassrooms(), fetchBells()]).finally(() => {
+    formLoading.value = false;
+  });
   await fetchData(1);
   await fetchStats();
 });
@@ -162,19 +163,22 @@ onBeforeMount(async () => {
               </div>
               <div class="col-md-3">
                 <label class="form-label">Нагрузка</label>
-                <select class="form-select" v-model="itemToAdd.workload" required>
+                <select class="form-select" v-model="itemToAdd.workload" required :disabled="workloads.length === 0">
+                  <option disabled v-if="workloads.length === 0">Загрузка...</option>
                   <option v-for="w in workloads" :key="w.id" :value="w.id">{{ workloadLabel(w) }}</option>
                 </select>
               </div>
               <div class="col-md-2">
                 <label class="form-label">Кабинет</label>
-                <select class="form-select" v-model="itemToAdd.classroom" required>
+                <select class="form-select" v-model="itemToAdd.classroom" required :disabled="classrooms.length === 0">
+                  <option disabled v-if="classrooms.length === 0">Загрузка...</option>
                   <option v-for="c in classrooms" :key="c.id" :value="c.id">Каб. {{ c.number }}</option>
                 </select>
               </div>
               <div class="col-md-2">
                 <label class="form-label">Слот</label>
-                <select class="form-select" v-model="itemToAdd.bell_schedule" required>
+                <select class="form-select" v-model="itemToAdd.bell_schedule" required :disabled="bells.length === 0">
+                  <option disabled v-if="bells.length === 0">Загрузка...</option>
                   <option v-for="b in bells" :key="b.id" :value="b.id">{{ bellLabel(b) }}</option>
                 </select>
               </div>
@@ -283,52 +287,57 @@ onBeforeMount(async () => {
               <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-              <div class="mb-3">
-                <label class="form-label">День</label>
-                <select class="form-select" v-model="itemToEdit.week_day">
-                  <option v-for="d in WEEK_DAYS" :key="d.value" :value="d.value">{{ d.label }}</option>
-                </select>
+              <div v-if="formLoading" class="d-flex justify-content-center py-4">
+                <div class="spinner-border text-primary"></div>
               </div>
-              <div class="mb-3">
-                <label class="form-label">Нагрузка</label>
-                <select class="form-select" v-model="itemToEdit.workload">
-                  <option v-for="w in workloads" :key="w.id" :value="w.id">{{ workloadLabel(w) }}</option>
-                </select>
-                <div v-if="selectedWorkloadEdit" class="row g-3 mt-1">
-                  <div class="col-md-4">
-                    <label class="form-label text-muted small mb-0">Учитель</label>
-                    <div class="form-control-plaintext py-0">{{ selectedWorkloadEdit.teacher_display }}</div>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label text-muted small mb-0">Группа</label>
-                    <div class="form-control-plaintext py-0">{{ selectedWorkloadEdit.study_group_display }}</div>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label text-muted small mb-0">Предмет</label>
-                    <div class="form-control-plaintext py-0">{{ selectedWorkloadEdit.subject_display }}</div>
+              <template v-else>
+                <div class="mb-3">
+                  <label class="form-label">День</label>
+                  <select class="form-select" v-model="itemToEdit.week_day">
+                    <option v-for="d in WEEK_DAYS" :key="d.value" :value="d.value">{{ d.label }}</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Нагрузка</label>
+                  <select class="form-select" v-model="itemToEdit.workload">
+                    <option v-for="w in workloads" :key="w.id" :value="w.id">{{ workloadLabel(w) }}</option>
+                  </select>
+                  <div v-if="selectedWorkloadEdit" class="row g-3 mt-1">
+                    <div class="col-md-4">
+                      <label class="form-label text-muted small mb-0">Учитель</label>
+                      <div class="form-control-plaintext py-0">{{ selectedWorkloadEdit.teacher_display }}</div>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label text-muted small mb-0">Группа</label>
+                      <div class="form-control-plaintext py-0">{{ selectedWorkloadEdit.study_group_display }}</div>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label text-muted small mb-0">Предмет</label>
+                      <div class="form-control-plaintext py-0">{{ selectedWorkloadEdit.subject_display }}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Кабинет</label>
-                <select class="form-select" v-model="itemToEdit.classroom">
-                  <option v-for="c in classrooms" :key="c.id" :value="c.id">Каб. {{ c.number }}</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Слот</label>
-                <select class="form-select" v-model="itemToEdit.bell_schedule">
-                  <option v-for="b in bells" :key="b.id" :value="b.id">{{ bellLabel(b) }}</option>
-                </select>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" v-model="itemToEdit.is_test" id="isTestEdit" />
-                <label class="form-check-label" for="isTestEdit">Контрольная</label>
-              </div>
+                <div class="mb-3">
+                  <label class="form-label">Кабинет</label>
+                  <select class="form-select" v-model="itemToEdit.classroom">
+                    <option v-for="c in classrooms" :key="c.id" :value="c.id">Каб. {{ c.number }}</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Слот</label>
+                  <select class="form-select" v-model="itemToEdit.bell_schedule">
+                    <option v-for="b in bells" :key="b.id" :value="b.id">{{ bellLabel(b) }}</option>
+                  </select>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" v-model="itemToEdit.is_test" id="isTestEdit" />
+                  <label class="form-check-label" for="isTestEdit">Контрольная</label>
+                </div>
+              </template>
             </div>
             <div class="modal-footer bg-light">
               <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-              <button class="btn btn-primary" data-bs-dismiss="modal" @click="onUpdate">Сохранить</button>
+              <button class="btn btn-primary" data-bs-dismiss="modal" @click="onUpdate" :disabled="formLoading">Сохранить</button>
             </div>
           </div>
         </div>
