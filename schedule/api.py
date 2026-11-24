@@ -384,6 +384,11 @@ class WorkloadViewSet(viewsets.ModelViewSet):
     queryset = Workload.objects.select_related('study_group', 'teacher', 'subject').all().order_by('id')
     serializer_class = WorkloadSerializer
     search_fields = ['teacher__last_name', 'subject__title', 'study_group__name']
+    filter_params = {
+        'teacher': 'teacher_id',
+        'subject': 'subject_id',
+        'group': 'study_group_id',
+    }
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -395,6 +400,13 @@ class WorkloadViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(user_id=user_id)
         else:
             qs = qs.filter(user=self.request.user)
+        for param, field in self.filter_params.items():
+            value = self.request.query_params.get(param)
+            if value:
+                try:
+                    qs = qs.filter(**{field: value})
+                except (ValueError, TypeError):
+                    continue
         qs = apply_search(qs, self.request, self.search_fields)
         return qs.annotate(distributed_lessons=Count('lessons', distinct=True))
 
@@ -416,6 +428,7 @@ class LessonViewSet(viewsets.ModelViewSet):
     queryset = Lesson.objects.select_related('workload__study_group', 'workload__teacher', 'workload__subject', 'classroom', 'bell_schedule').all().order_by('id')
     serializer_class = LessonSerializer
     filter_params = {
+        'week_day': 'week_day',
         'teacher': 'workload__teacher_id',
         'group': 'workload__study_group_id',
         'subject': 'workload__subject_id',

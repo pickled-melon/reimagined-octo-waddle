@@ -10,7 +10,7 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize, stats,
+  items, totalCount, currentPage, pageSize, stats, filters,
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/workloads/');
 
@@ -30,6 +30,16 @@ const itemToEdit = ref({});
 
 function teacherLabel(profile) {
   return profile.user_display || profile.user;
+}
+
+function setColumnFilter(key, value) {
+  const next = { ...filters.value };
+  if (value === '') {
+    delete next[key];
+  } else {
+    next[key] = Number(value);
+  }
+  filters.value = next;
 }
 
 async function fetchSubjects() {
@@ -158,6 +168,32 @@ onBeforeMount(async () => {
               <th>Дисциплина</th>
               <th>Автор</th>
               <th class="text-end">Действия</th>
+            </tr>
+            <tr>
+              <th></th>
+              <th>
+                <select class="form-select form-select-sm" :disabled="groups.length === 0" :value="filters.group || ''" @change="setColumnFilter('group', $event.target.value)">
+                  <option value="">Все</option>
+                  <option disabled v-if="groups.length === 0">Загрузка...</option>
+                  <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+                </select>
+              </th>
+              <th>
+                <select class="form-select form-select-sm" :disabled="profiles.length === 0" :value="filters.teacher || ''" @change="setColumnFilter('teacher', $event.target.value)">
+                  <option value="">Все</option>
+                  <option disabled v-if="profiles.length === 0">Загрузка...</option>
+                  <option v-for="p in profiles" :key="p.id" :value="p.user">{{ teacherLabel(p) }}</option>
+                </select>
+              </th>
+              <th>
+                <select class="form-select form-select-sm" :disabled="subjects.length === 0" :value="filters.subject || ''" @change="setColumnFilter('subject', $event.target.value)">
+                  <option value="">Все</option>
+                  <option disabled v-if="subjects.length === 0">Загрузка...</option>
+                  <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.title }}</option>
+                </select>
+              </th>
+              <th></th>
+              <th></th>
             </tr>
           </thead>
           <tbody>

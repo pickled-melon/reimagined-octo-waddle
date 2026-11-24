@@ -35,6 +35,28 @@ function isActiveFilter(type, value) {
   return filters.value[type] === value;
 }
 
+function setColumnFilter(key, value) {
+  const next = { ...filters.value };
+  if (value === '') {
+    delete next[key];
+  } else {
+    next[key] = Number(value);
+  }
+  filters.value = next;
+}
+
+const hasColumnFilters = computed(() =>
+  ['week_day', 'teacher', 'group'].some(key => key in filters.value)
+);
+
+function resetColumnFilters() {
+  const next = { ...filters.value };
+  delete next.week_day;
+  delete next.teacher;
+  delete next.group;
+  filters.value = next;
+}
+
 const lessonStatsConfig = [
   { key: 'count', label: 'Всего уроков' },
   { key: 'test_count', label: 'Контрольных' },
@@ -45,6 +67,8 @@ const lessonStatsConfig = [
 const workloads = ref([]);
 const classrooms = ref([]);
 const bells = ref([]);
+const profiles = ref([]);
+const groups = ref([]);
 const formLoading = ref(true);
 const itemToAdd = ref({});
 const itemToEdit = ref({});
@@ -88,6 +112,16 @@ async function fetchBells() {
   bells.value = r.data.results;
 }
 
+async function fetchProfiles() {
+  const r = await axios.get('/api/profile/?page_size=1000');
+  profiles.value = r.data.results;
+}
+
+async function fetchGroups() {
+  const r = await axios.get('/api/study-groups/?page_size=1000');
+  groups.value = r.data.results;
+}
+
 async function onAdd() {
   await axios.post('/api/lessons/', { ...itemToAdd.value });
   itemToAdd.value = {};
@@ -118,7 +152,7 @@ async function onDeleteLesson(item) {
 
 onBeforeMount(async () => {
   await fetchUsers();
-  await Promise.all([fetchWorkloads(), fetchClassrooms(), fetchBells()]).finally(() => {
+  await Promise.all([fetchWorkloads(), fetchClassrooms(), fetchBells(), fetchProfiles(), fetchGroups()]).finally(() => {
     formLoading.value = false;
   });
   await fetchData(1);
@@ -225,6 +259,36 @@ onBeforeMount(async () => {
               <th>Контр.</th>
               <th>Автор</th>
               <th class="text-end">Действия</th>
+            </tr>
+            <tr>
+              <th>
+                <select class="form-select form-select-sm" :value="filters.week_day || ''" @change="setColumnFilter('week_day', $event.target.value)">
+                  <option value="">Все</option>
+                  <option v-for="d in WEEK_DAYS" :key="d.value" :value="d.value">{{ d.label }}</option>
+                </select>
+              </th>
+              <th></th>
+              <th>
+                <select class="form-select form-select-sm" :disabled="groups.length === 0" :value="filters.group || ''" @change="setColumnFilter('group', $event.target.value)">
+                  <option value="">Все</option>
+                  <option disabled v-if="groups.length === 0">Загрузка...</option>
+                  <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+                </select>
+              </th>
+              <th></th>
+              <th>
+                <select class="form-select form-select-sm" :disabled="profiles.length === 0" :value="filters.teacher || ''" @change="setColumnFilter('teacher', $event.target.value)">
+                  <option value="">Все</option>
+                  <option disabled v-if="profiles.length === 0">Загрузка...</option>
+                  <option v-for="p in profiles" :key="p.id" :value="p.user">{{ p.user_display }}</option>
+                </select>
+              </th>
+              <th></th>
+              <th></th>
+              <th></th>
+              <th class="text-end">
+                <button class="btn btn-sm btn-outline-secondary" :disabled="!hasColumnFilters" @click="resetColumnFilters">Сброс</button>
+              </th>
             </tr>
           </thead>
           <tbody>
