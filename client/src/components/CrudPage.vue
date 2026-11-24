@@ -1,7 +1,9 @@
 <script setup>
-import { computed, inject, ref } from 'vue';
+import { computed, inject, provide, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import Pagination from '@/components/Pagination.vue';
 import { crudLoadingKey, crudSearchKey } from '@/composables/useCrud';
+import useProfileStore from '@/stores/profileStore';
 
 const props = defineProps({
   title: { type: String, required: true },
@@ -22,6 +24,19 @@ const emit = defineEmits(['update:selectedUserId', 'update:currentPage']);
 
 const loading = inject(crudLoadingKey, ref(false));
 const search = inject(crudSearchKey, ref(''));
+
+const profileStore = useProfileStore();
+const { userRole, isSuperuser: storeIsSuperuser } = storeToRefs(profileStore);
+
+const canManage = computed(() =>
+  storeIsSuperuser.value || props.isSuperuser || userRole.value === 1 || userRole.value === 2
+);
+const canCreate = computed(() => canManage.value);
+const canEdit = computed(() => canManage.value);
+const canDelete = computed(() => canManage.value);
+
+provide('crudCanEdit', canEdit);
+provide('crudCanDelete', canDelete);
 
 function onSearchInput(event) {
   search.value = event.target.value;
@@ -82,7 +97,7 @@ function formatStat(value, format) {
         </div>
 
         <div class="d-flex gap-3 align-items-center">
-          <div v-if="isSuperuser && showFilter" class="d-flex align-items-center gap-2">
+          <div v-if="canManage && showFilter" class="d-flex align-items-center gap-2">
             <label class="form-label mb-0 fw-semibold text-muted">Фильтр по автору:</label>
             <select
               :value="selectedUserId"
@@ -106,7 +121,7 @@ function formatStat(value, format) {
         </div>
       </div>
 
-      <slot name="form"></slot>
+      <slot v-if="canCreate" name="form"></slot>
     </div>
 
     <div class="scroll-area">

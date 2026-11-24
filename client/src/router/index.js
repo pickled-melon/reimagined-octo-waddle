@@ -1,6 +1,7 @@
 import LoginPage from '@/pages/LoginPage.vue'
 import RegisterPage from '@/pages/RegisterPage.vue'
 import MainPage from '@/pages/MainPage.vue'
+import useProfileStore from '@/stores/profileStore'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
@@ -22,6 +23,22 @@ const router = createRouter({
     { path: '/difficulties', component: () => import('@/views/DifficultiesView.vue') },
     { path: '/profiles', component: () => import('@/views/ProfilesView.vue') },
   ],
+})
+
+let authChecked = false
+
+router.beforeEach(async (to, from, next) => {
+  const profileStore = useProfileStore()
+  if (!authChecked) {
+    await profileStore.fetchMe()
+    authChecked = true
+  }
+  const publicPages = ['/login', '/register']
+  if (!publicPages.includes(to.path) && !profileStore.isAuthenticated) {
+    next('/login')
+  } else {
+    next()
+  }
 })
 
 export default router

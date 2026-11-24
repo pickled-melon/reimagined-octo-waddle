@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, onBeforeMount } from 'vue';
+import { ref } from 'vue';
 import axios from 'axios';
 import Cookies from "js-cookie";
 
@@ -8,6 +8,7 @@ const useProfileStore = defineStore('profileStore', () => {
     const isAuthenticated = ref(false);
     const userName = ref(null);
     const isSuperuser = ref(false);
+    const userRole = ref(0);
     
     async function fetchMe() {
         try {
@@ -16,6 +17,7 @@ const useProfileStore = defineStore('profileStore', () => {
             isAuthenticated.value = r.data.is_authenticated;
             userName.value = r.data.is_authenticated ? r.data.username : null;
             isSuperuser.value = r.data.is_superuser || false;
+            userRole.value = r.data.role || 0;
         } catch (e) {
             isAuthenticated.value = false;
         }
@@ -42,14 +44,11 @@ const useProfileStore = defineStore('profileStore', () => {
         await fetchMe();
     }
 
-    onBeforeMount(() => {
-        fetchMe();
-    })
-
     return {
         isAuthenticated,
         userName,
         isSuperuser,
+        userRole,
         fetchMe,
         login,
         register,

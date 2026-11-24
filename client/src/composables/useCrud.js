@@ -1,4 +1,4 @@
-import { ref, watch, provide } from 'vue';
+import { ref, watch, provide, computed } from 'vue';
 import axios from 'axios';
 import useProfileStore from '@/stores/profileStore';
 import { storeToRefs } from 'pinia';
@@ -8,7 +8,10 @@ export const crudSearchKey = Symbol('crudSearch');
 
 export function useCrud(apiUrl) {
   const profileStore = useProfileStore();
-  const { isSuperuser } = storeToRefs(profileStore);
+  const { isSuperuser, userRole } = storeToRefs(profileStore);
+  const canManage = computed(() =>
+    isSuperuser.value || userRole.value === 1 || userRole.value === 2
+  );
 
   const items = ref([]);
   const totalCount = ref(0);
@@ -25,7 +28,7 @@ export function useCrud(apiUrl) {
   provide(crudSearchKey, search);
 
   async function fetchUsers() {
-    if (isSuperuser.value) {
+    if (canManage.value) {
       const r = await axios.get('/api/profile/all/');
       users.value = r.data;
     }
@@ -33,7 +36,7 @@ export function useCrud(apiUrl) {
 
   async function fetchStats() {
     let url = `${apiUrl}stats/`;
-    if (isSuperuser.value && selectedUserId.value) {
+    if (canManage.value && selectedUserId.value) {
       url += `?user=${selectedUserId.value}`;
     }
     const r = await axios.get(url);
@@ -43,7 +46,7 @@ export function useCrud(apiUrl) {
   async function fetchData(page = 1) {
     loading.value = true;
     let url = `${apiUrl}?page=${page}`;
-    if (isSuperuser.value && selectedUserId.value) {
+    if (canManage.value && selectedUserId.value) {
       url += `&user=${selectedUserId.value}`;
     }
     if (search.value) {

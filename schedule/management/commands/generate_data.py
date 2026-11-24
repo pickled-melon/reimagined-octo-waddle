@@ -80,17 +80,13 @@ class Command(BaseCommand):
             fio_translited = re.sub("['-]", "", fio_translited)
             fio_translited = fio_translited.replace(" ", "_")
             username = f"{prefix}_{fio_translited}"
-
             while username in existing_usernames:
                 username = f"{prefix}_{fio_translited}_{random.randint(1000, 9999)}"
-
             existing_usernames.add(username)
             splitted_name = fio.split(" ")
             if len(splitted_name) != 3:
                 continue
-
             first_name, last_name, _ = splitted_name
-
             user = User.objects.create_user(
                 username=username,
                 email=f"{username}@school.gosuslugi.ru",
@@ -98,8 +94,12 @@ class Command(BaseCommand):
                 last_name=last_name,
                 password="password123"
             )
-            user.profile.role = Profile.Role.TEACHER
+            user.profile.role = role_value
             user.profile.save()
+            if role_value == Profile.Role.HEAD_TEACHER:
+                user.is_superuser = True
+                user.is_staff = True
+                user.save()
             users.append(user)
 
         for _ in tqdm(range(97)):
@@ -131,6 +131,8 @@ class Command(BaseCommand):
                 last_name=last_name,
                 password="password123"
             )
+            user.profile.role = Profile.Role.TEACHER
+            user.profile.save()
             users.append(user)
 
         return users

@@ -1,5 +1,6 @@
 from rest_framework import mixins, viewsets, serializers
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.contrib.auth import logout as django_logout
@@ -28,7 +29,39 @@ def apply_search(qs, request, fields):
     return qs.filter(query)
 
 
+class RolePermissionMixin:
+    def get_role(self, request):
+        profile = getattr(request.user, 'profile', None)
+        return profile.role if profile else None
+
+    def is_privileged(self, request):
+        if not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        return self.get_role(request) in (Profile.Role.METHODIST, Profile.Role.HEAD_TEACHER)
+
+    def is_teacher(self, request):
+        return self.get_role(request) == Profile.Role.TEACHER
+
+    def perform_create(self, serializer):
+        if not self.is_privileged(self.request):
+            raise PermissionDenied('Недостаточно прав для создания')
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if not self.is_privileged(self.request):
+            raise PermissionDenied('Недостаточно прав для изменения')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if not self.is_privileged(self.request):
+            raise PermissionDenied('Недостаточно прав для удаления')
+        instance.delete()
+
+
 class ProfileViewSet(
+    RolePermissionMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
@@ -44,8 +77,12 @@ class ProfileViewSet(
         qs = super().get_queryset()
         if not self.request.user.is_authenticated:
             return qs.none()
-        if not self.request.user.is_superuser:
-            qs = qs.filter(user=self.request.user)
+        if self.is_privileged(self.request):
+            user_id = self.request.query_params.get('user')
+            if user_id:
+                qs = qs.filter(user_id=user_id)
+        elif not self.is_teacher(self.request):
+            return qs.none()
         return apply_search(qs, self.request, self.search_fields)
 
     @action(detail=False, methods=["GET"], url_path="stats")
@@ -94,7 +131,7 @@ class ProfileViewSet(
 
     @action(detail=False, url_path="all", methods=['GET'])
     def get_all(self, request, *args, **kwargs):
-        if not request.user.is_superuser:
+        if not self.is_privileged(request):
             return Response({'error': 'Нет прав'}, status=403)
         users = User.objects.all().values(
             'id', 'username', 'first_name', 'last_name',
@@ -103,7 +140,7 @@ class ProfileViewSet(
         return Response(users)
 
 
-class ClassroomViewSet(viewsets.ModelViewSet):
+class ClassroomViewSet(RolePermissionMixin, viewsets.ModelViewSet):
     queryset = Classroom.objects.all().order_by('id')
     serializer_class = ClassroomSerializer
     search_fields = ['number']
@@ -112,12 +149,12 @@ class ClassroomViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if not self.request.user.is_authenticated:
             return qs.none()
-        if self.request.user.is_superuser:
+        if self.is_privileged(self.request):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(user_id=user_id)
-        else:
-            qs = qs.filter(user=self.request.user)
+        elif not self.is_teacher(self.request):
+            return qs.none()
         qs = apply_search(qs, self.request, self.search_fields)
         return qs.annotate(
             weekly_lessons=Count('lessons', distinct=True),
@@ -145,7 +182,7 @@ class ClassroomViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class SubjectViewSet(viewsets.ModelViewSet):
+class SubjectViewSet(RolePermissionMixin, viewsets.ModelViewSet):
     queryset = Subject.objects.prefetch_related('classrooms', 'groups', 'pictures').all().order_by('id')
     serializer_class = SubjectSerializer
     search_fields = ['title']
@@ -154,12 +191,12 @@ class SubjectViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if not self.request.user.is_authenticated:
             return qs.none()
-        if self.request.user.is_superuser:
+        if self.is_privileged(self.request):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(user_id=user_id)
-        else:
-            qs = qs.filter(user=self.request.user)
+        elif not self.is_teacher(self.request):
+            return qs.none()
         return apply_search(qs, self.request, self.search_fields)
 
     @action(detail=False, methods=["GET"], url_path="stats")
@@ -181,7 +218,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
         return Response(stats)
 
 
-class SubjectPictureViewSet(viewsets.ModelViewSet):
+class SubjectPictureViewSet(RolePermissionMixin, viewsets.ModelViewSet):
     queryset = SubjectPicture.objects.select_related('subject').all().order_by('id')
     serializer_class = SubjectPictureSerializer
 
@@ -189,12 +226,13 @@ class SubjectPictureViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if not self.request.user.is_authenticated:
             return qs.none()
-        if self.request.user.is_superuser:
+        if self.is_privileged(self.request):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(user_id=user_id)
-            return qs
-        return qs.filter(user=self.request.user)
+        elif not self.is_teacher(self.request):
+            return qs.none()
+        return qs
 
     @action(detail=False, methods=["GET"], url_path="stats")
     def get_stats(self, request, *args, **kwargs):
@@ -203,7 +241,7 @@ class SubjectPictureViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class StudyYearViewSet(viewsets.ModelViewSet):
+class StudyYearViewSet(RolePermissionMixin, viewsets.ModelViewSet):
     queryset = StudyYear.objects.all().order_by('id')
     serializer_class = StudyYearSerializer
     search_fields = ['year']
@@ -212,12 +250,12 @@ class StudyYearViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if not self.request.user.is_authenticated:
             return qs.none()
-        if self.request.user.is_superuser:
+        if self.is_privileged(self.request):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(user_id=user_id)
-        else:
-            qs = qs.filter(user=self.request.user)
+        elif not self.is_teacher(self.request):
+            return qs.none()
         return apply_search(qs, self.request, self.search_fields)
 
     @action(detail=False, methods=["GET"], url_path="stats")
@@ -236,7 +274,7 @@ class StudyYearViewSet(viewsets.ModelViewSet):
         return Response(stats)
 
 
-class BellScheduleViewSet(viewsets.ModelViewSet):
+class BellScheduleViewSet(RolePermissionMixin, viewsets.ModelViewSet):
     queryset = BellSchedule.objects.all().order_by('id')
     serializer_class = BellScheduleSerializer
     search_fields = ['lesson_number']
@@ -245,12 +283,12 @@ class BellScheduleViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if not self.request.user.is_authenticated:
             return qs.none()
-        if self.request.user.is_superuser:
+        if self.is_privileged(self.request):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(user_id=user_id)
-        else:
-            qs = qs.filter(user=self.request.user)
+        elif not self.is_teacher(self.request):
+            return qs.none()
         return apply_search(qs, self.request, self.search_fields)
 
     @action(detail=False, methods=["GET"], url_path="stats")
@@ -281,7 +319,7 @@ class BellScheduleViewSet(viewsets.ModelViewSet):
         return Response(stats)
 
 
-class UserSubjectViewSet(viewsets.ModelViewSet):
+class UserSubjectViewSet(RolePermissionMixin, viewsets.ModelViewSet):
     queryset = UserSubject.objects.select_related('user', 'subject').all().order_by('id')
     serializer_class = UserSubjectSerializer
     search_fields = ['user__last_name', 'subject__title']
@@ -290,12 +328,12 @@ class UserSubjectViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if not self.request.user.is_authenticated:
             return qs.none()
-        if self.request.user.is_superuser:
+        if self.is_privileged(self.request):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(creator_id=user_id)
-        else:
-            qs = qs.filter(creator=self.request.user)
+        elif not self.is_teacher(self.request):
+            return qs.none()
         return apply_search(qs, self.request, self.search_fields)
 
     @action(detail=False, methods=["GET"], url_path="stats")
@@ -315,7 +353,7 @@ class UserSubjectViewSet(viewsets.ModelViewSet):
         return Response(stats)
 
 
-class DifficultyViewSet(viewsets.ModelViewSet):
+class DifficultyViewSet(RolePermissionMixin, viewsets.ModelViewSet):
     queryset = Difficulty.objects.select_related('study_year', 'subject').all().order_by('id')
     serializer_class = DifficultySerializer
     search_fields = ['subject__title', 'study_year__year']
@@ -324,12 +362,12 @@ class DifficultyViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if not self.request.user.is_authenticated:
             return qs.none()
-        if self.request.user.is_superuser:
+        if self.is_privileged(self.request):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(user_id=user_id)
-        else:
-            qs = qs.filter(user=self.request.user)
+        elif not self.is_teacher(self.request):
+            return qs.none()
         return apply_search(qs, self.request, self.search_fields)
 
     @action(detail=False, methods=["GET"], url_path="stats")
@@ -349,7 +387,7 @@ class DifficultyViewSet(viewsets.ModelViewSet):
         return Response(stats)
 
 
-class StudyGroupViewSet(viewsets.ModelViewSet):
+class StudyGroupViewSet(RolePermissionMixin, viewsets.ModelViewSet):
     queryset = StudyGroup.objects.select_related('study_year', 'parent').all().order_by('id')
     serializer_class = StudyGroupSerializer
     search_fields = ['name', 'letter']
@@ -358,12 +396,12 @@ class StudyGroupViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if not self.request.user.is_authenticated:
             return qs.none()
-        if self.request.user.is_superuser:
+        if self.is_privileged(self.request):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(user_id=user_id)
-        else:
-            qs = qs.filter(user=self.request.user)
+        elif not self.is_teacher(self.request):
+            return qs.none()
         qs = apply_search(qs, self.request, self.search_fields)
         return qs.annotate(
             total_hours=Sum('workloads__hours_count'),
@@ -380,7 +418,7 @@ class StudyGroupViewSet(viewsets.ModelViewSet):
         return Response(stats)
 
 
-class WorkloadViewSet(viewsets.ModelViewSet):
+class WorkloadViewSet(RolePermissionMixin, viewsets.ModelViewSet):
     queryset = Workload.objects.select_related('study_group', 'teacher', 'subject').all().order_by('id')
     serializer_class = WorkloadSerializer
     search_fields = ['teacher__last_name', 'subject__title', 'study_group__name']
@@ -394,12 +432,14 @@ class WorkloadViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if not self.request.user.is_authenticated:
             return qs.none()
-        if self.request.user.is_superuser:
+        if self.is_privileged(self.request):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(user_id=user_id)
+        elif self.is_teacher(self.request):
+            qs = qs.filter(teacher=self.request.user)
         else:
-            qs = qs.filter(user=self.request.user)
+            return qs.none()
         for param, field in self.filter_params.items():
             value = self.request.query_params.get(param)
             if value:
@@ -424,7 +464,7 @@ class WorkloadViewSet(viewsets.ModelViewSet):
         return Response(stats)
 
 
-class LessonViewSet(viewsets.ModelViewSet):
+class LessonViewSet(RolePermissionMixin, viewsets.ModelViewSet):
     queryset = Lesson.objects.select_related('workload__study_group', 'workload__teacher', 'workload__subject', 'classroom', 'bell_schedule').all().order_by('id')
     serializer_class = LessonSerializer
     filter_params = {
@@ -440,12 +480,14 @@ class LessonViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         if not self.request.user.is_authenticated:
             return qs.none()
-        if self.request.user.is_superuser:
+        if self.is_privileged(self.request):
             user_id = self.request.query_params.get('user')
             if user_id:
                 qs = qs.filter(user_id=user_id)
+        elif self.is_teacher(self.request):
+            qs = qs.filter(workload__teacher=self.request.user)
         else:
-            qs = qs.filter(user=self.request.user)
+            return qs.none()
         for param, field in self.filter_params.items():
             value = self.request.query_params.get(param)
             if value:
