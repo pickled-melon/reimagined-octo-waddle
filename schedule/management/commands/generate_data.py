@@ -19,8 +19,6 @@ from schedule.models import (
 
 
 class Command(BaseCommand):
-    help = 'Генерирует тестовые данные для системы расписания'
-
     def handle(self, *args, **options):
         random.seed(42)
         fake = Faker('ru_RU')
@@ -66,27 +64,31 @@ class Command(BaseCommand):
 
         admin = User.objects.create_superuser(
             username='admin',
-            email='admin@school.ru',
-            first_name='Админ',
-            last_name='Системы',
+            email='admin@school.gosuslugi.ru',
+            first_name='Тыжпрограммист',
+            last_name='Сисадминов',
             password='admin123'
         )
         users.append(admin)
         existing_usernames.add('admin')
 
         for role_value, prefix in [(Profile.Role.METHODIST, 'methodist'), (Profile.Role.HEAD_TEACHER, 'headteacher')]:
-            fio = fake.name()
+            is_male = random.choice([True, False])
+            last_name = fake.last_name_male() if is_male else fake.last_name_female()
+            first_name = fake.first_name_male() if is_male else fake.first_name_female()
+            patronymic = fake.middle_name_male() if is_male else fake.middle_name_female()
+
+            fio = f"{last_name} {first_name} {patronymic}"
             fio_translited = translit(fio, 'ru', reversed=True).lower()
-            fio_translited = re.sub("['-]", "", fio_translited)
+            fio_translited = re.sub(r"['\-]", "", fio_translited)
             fio_translited = fio_translited.replace(" ", "_")
             username = f"{prefix}_{fio_translited}"
+
             while username in existing_usernames:
                 username = f"{prefix}_{fio_translited}_{random.randint(1000, 9999)}"
+
             existing_usernames.add(username)
-            splitted_name = fio.split(" ")
-            if len(splitted_name) != 3:
-                continue
-            first_name, last_name, _ = splitted_name
+
             user = User.objects.create_user(
                 username=username,
                 email=f"{username}@school.gosuslugi.ru",
@@ -95,17 +97,25 @@ class Command(BaseCommand):
                 password="password123"
             )
             user.profile.role = role_value
+            user.profile.patronymic_name = patronymic
             user.profile.save()
+            
             if role_value == Profile.Role.HEAD_TEACHER:
                 user.is_superuser = True
                 user.is_staff = True
                 user.save()
+                
             users.append(user)
 
         for _ in tqdm(range(97)):
-            fio = fake.name()
+            is_male = random.choice([True, False])
+            last_name = fake.last_name_male() if is_male else fake.last_name_female()
+            first_name = fake.first_name_male() if is_male else fake.first_name_female()
+            patronymic = fake.middle_name_male() if is_male else fake.middle_name_female()
+
+            fio = f"{last_name} {first_name} {patronymic}"
             fio_translited = translit(fio, 'ru', reversed=True).lower()
-            fio_translited = re.sub("['-]", "", fio_translited)
+            fio_translited = re.sub(r"['\-]", "", fio_translited)
             fio_translited = fio_translited.replace(" ", "_")
             username = f"teacher_{fio_translited}"
 
@@ -118,11 +128,6 @@ class Command(BaseCommand):
                 continue
 
             existing_usernames.add(username)
-            splitted_name = fio.split(" ")
-            if len(splitted_name) != 3:
-                continue
-
-            first_name, last_name, _ = splitted_name
 
             user = User.objects.create_user(
                 username=username,
@@ -132,6 +137,7 @@ class Command(BaseCommand):
                 password="password123"
             )
             user.profile.role = Profile.Role.TEACHER
+            user.profile.patronymic_name = patronymic
             user.profile.save()
             users.append(user)
 
