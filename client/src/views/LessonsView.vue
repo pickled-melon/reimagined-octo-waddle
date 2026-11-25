@@ -262,26 +262,41 @@ onBeforeMount(async () => {
             </tr>
             <tr>
               <th>
-                <select class="form-select form-select-sm" :value="filters.week_day || ''" @change="setColumnFilter('week_day', $event.target.value)">
-                  <option value="">Все</option>
-                  <option v-for="d in WEEK_DAYS" :key="d.value" :value="d.value">{{ d.label }}</option>
-                </select>
+                <div class="input-group input-group-sm">
+                  <select class="form-select form-select-sm" :value="filters.week_day || ''" @change="setColumnFilter('week_day', $event.target.value)">
+                    <option value="">Все</option>
+                    <option v-for="d in WEEK_DAYS" :key="d.value" :value="d.value">{{ d.label }}</option>
+                  </select>
+                  <button v-if="filters.week_day" class="btn btn-outline-secondary" type="button" @click="setColumnFilter('week_day', '')">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
               </th>
               <th></th>
               <th>
-                <select class="form-select form-select-sm" :disabled="groups.length === 0" :value="filters.group || ''" @change="setColumnFilter('group', $event.target.value)">
-                  <option value="">Все</option>
-                  <option disabled v-if="groups.length === 0">Загрузка...</option>
-                  <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
-                </select>
+                <div class="input-group input-group-sm">
+                  <select class="form-select form-select-sm" :disabled="groups.length === 0" :value="filters.group || ''" @change="setColumnFilter('group', $event.target.value)">
+                    <option value="">Все</option>
+                    <option disabled v-if="groups.length === 0">Загрузка...</option>
+                    <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+                  </select>
+                  <button v-if="filters.group" class="btn btn-outline-secondary" type="button" @click="setColumnFilter('group', '')">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
               </th>
               <th></th>
               <th>
-                <select class="form-select form-select-sm" :disabled="profiles.length === 0" :value="filters.teacher || ''" @change="setColumnFilter('teacher', $event.target.value)">
-                  <option value="">Все</option>
-                  <option disabled v-if="profiles.length === 0">Загрузка...</option>
-                  <option v-for="p in profiles" :key="p.id" :value="p.user">{{ p.user_display }}</option>
-                </select>
+                <div class="input-group input-group-sm">
+                  <select class="form-select form-select-sm" :disabled="profiles.length === 0" :value="filters.teacher || ''" @change="setColumnFilter('teacher', $event.target.value)">
+                    <option value="">Все</option>
+                    <option disabled v-if="profiles.length === 0">Загрузка...</option>
+                    <option v-for="p in profiles" :key="p.id" :value="p.user">{{ p.user_display }}</option>
+                  </select>
+                  <button v-if="filters.teacher" class="btn btn-outline-secondary" type="button" @click="setColumnFilter('teacher', '')">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
               </th>
               <th></th>
               <th></th>

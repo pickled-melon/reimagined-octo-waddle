@@ -172,25 +172,40 @@ onBeforeMount(async () => {
             <tr>
               <th></th>
               <th>
-                <select class="form-select form-select-sm" :disabled="groups.length === 0" :value="filters.group || ''" @change="setColumnFilter('group', $event.target.value)">
-                  <option value="">Все</option>
-                  <option disabled v-if="groups.length === 0">Загрузка...</option>
-                  <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
-                </select>
+                <div class="input-group input-group-sm">
+                  <select class="form-select form-select-sm" :disabled="groups.length === 0" :value="filters.group || ''" @change="setColumnFilter('group', $event.target.value)">
+                    <option value="">Все</option>
+                    <option disabled v-if="groups.length === 0">Загрузка...</option>
+                    <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+                  </select>
+                  <button v-if="filters.group" class="btn btn-outline-secondary" type="button" @click="setColumnFilter('group', '')">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
               </th>
               <th>
-                <select class="form-select form-select-sm" :disabled="profiles.length === 0" :value="filters.teacher || ''" @change="setColumnFilter('teacher', $event.target.value)">
-                  <option value="">Все</option>
-                  <option disabled v-if="profiles.length === 0">Загрузка...</option>
-                  <option v-for="p in profiles" :key="p.id" :value="p.user">{{ teacherLabel(p) }}</option>
-                </select>
+                <div class="input-group input-group-sm">
+                  <select class="form-select form-select-sm" :disabled="profiles.length === 0" :value="filters.teacher || ''" @change="setColumnFilter('teacher', $event.target.value)">
+                    <option value="">Все</option>
+                    <option disabled v-if="profiles.length === 0">Загрузка...</option>
+                    <option v-for="p in profiles" :key="p.id" :value="p.user">{{ teacherLabel(p) }}</option>
+                  </select>
+                  <button v-if="filters.teacher" class="btn btn-outline-secondary" type="button" @click="setColumnFilter('teacher', '')">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
               </th>
               <th>
-                <select class="form-select form-select-sm" :disabled="subjects.length === 0" :value="filters.subject || ''" @change="setColumnFilter('subject', $event.target.value)">
-                  <option value="">Все</option>
-                  <option disabled v-if="subjects.length === 0">Загрузка...</option>
-                  <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.title }}</option>
-                </select>
+                <div class="input-group input-group-sm">
+                  <select class="form-select form-select-sm" :disabled="subjects.length === 0" :value="filters.subject || ''" @change="setColumnFilter('subject', $event.target.value)">
+                    <option value="">Все</option>
+                    <option disabled v-if="subjects.length === 0">Загрузка...</option>
+                    <option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.title }}</option>
+                  </select>
+                  <button v-if="filters.subject" class="btn btn-outline-secondary" type="button" @click="setColumnFilter('subject', '')">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
               </th>
               <th></th>
               <th></th>
