@@ -7,3 +7,4 @@ faker==40.43.0
 django-debug-toolbar==8.0.0
 tqdm==4.70.1
 transliterate==1.10.2
+openpyxl==3.1.5

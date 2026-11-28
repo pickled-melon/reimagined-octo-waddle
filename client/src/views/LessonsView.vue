@@ -2,6 +2,8 @@
 import { ref, computed, onBeforeMount } from 'vue';
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { storeToRefs } from 'pinia';
+import useProfileStore from '@/stores/profileStore';
 import { useCrud } from '@/composables/useCrud';
 import CrudPage from '@/components/CrudPage.vue';
 
@@ -10,11 +12,17 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize, stats, filters,
+  items, totalCount, currentPage, pageSize, stats, filters, search,
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/lessons/');
 
 const hasActiveFilter = computed(() => Object.keys(filters.value).length > 0);
+
+const { userRole } = storeToRefs(useProfileStore());
+
+const canExport = computed(() =>
+  isSuperuser.value || userRole.value === 1 || userRole.value === 2
+);
 
 function onFilterClick(type, value) {
   if (value === null || value === undefined || value === '') return;
@@ -29,6 +37,25 @@ function onFilterClick(type, value) {
 
 function resetFilters() {
   filters.value = {};
+}
+
+async function exportToExcel() {
+  const params = { ...filters.value };
+  if (search.value) params.search = search.value;
+  if (selectedUserId.value) params.user = selectedUserId.value;
+  const response = await axios.get('/api/lessons/export/', {
+    params,
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  const today = new Date().toISOString().split('T')[0];
+  link.setAttribute('download', `lessons_${today}.xlsx`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 function isActiveFilter(type, value) {
@@ -176,6 +203,9 @@ onBeforeMount(async () => {
     @update:current-page="currentPage = $event"
   >
     <template #header-actions>
+      <button v-if="canExport" class="btn btn-success btn-sm me-2" @click="exportToExcel">
+        <i class="bi bi-file-earmark-excel me-1"></i>Выгрузить в Excel
+      </button>
       <button class="btn btn-outline-secondary btn-sm" :disabled="!hasActiveFilter" @click="resetFilters">
         <i class="bi bi-x-circle me-1"></i>Сбросить фильтр
       </button>

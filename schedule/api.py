@@ -7,6 +7,12 @@ from django.contrib.auth import logout as django_logout
 from django.contrib.auth import login as django_login
 from django.contrib.auth import authenticate
 from django.db.models import Avg, Count, Max, Min, Q, Sum
+from io import BytesIO
+from django.http import FileResponse
+from django.utils import timezone
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
+from openpyxl.utils import get_column_letter
 
 from schedule.models import *
 from schedule.serializers import *
@@ -27,6 +33,20 @@ def apply_search(qs, request, fields):
     for field in fields:
         query |= Q(**{field + '__icontains': search})
     return qs.filter(query)
+
+
+def user_short_name(user):
+    if user is None:
+        return '-'
+    profile = getattr(user, 'profile', None)
+    patronymic = (profile.patronymic_name if profile else '') or ''
+    initials = ''
+    if user.first_name:
+        initials += f'{user.first_name[0]}.'
+    if patronymic:
+        initials += f'{patronymic[0]}.'
+    name = ' '.join(part for part in (user.last_name, initials) if part).strip()
+    return name or user.username
 
 
 class RolePermissionMixin:
@@ -463,6 +483,46 @@ class WorkloadViewSet(RolePermissionMixin, viewsets.ModelViewSet):
         }
         return Response(stats)
 
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        if not self.is_privileged(request):
+            raise PermissionDenied('Недостаточно прав для экспорта')
+        qs = self.get_queryset().select_related(
+            'study_group',
+            'teacher__profile',
+            'subject',
+        )[:10000]
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = 'Нагрузки'
+        headers = ['Группа', 'Учитель', 'Дисциплина', 'Часов по плану', 'Распределено', 'Остаток']
+        sheet.append(headers)
+        for cell in sheet[1]:
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill('solid', fgColor='D9D9D9')
+        for workload in qs:
+            distributed = getattr(workload, 'distributed_lessons', 0)
+            sheet.append([
+                workload.study_group.name,
+                user_short_name(workload.teacher),
+                workload.subject.title,
+                workload.hours_count,
+                distributed,
+                workload.hours_count - distributed,
+            ])
+        for index, column in enumerate(sheet.columns, start=1):
+            length = max(len('' if cell.value is None else str(cell.value)) for cell in column)
+            sheet.column_dimensions[get_column_letter(index)].width = length + 2
+        buffer = BytesIO()
+        workbook.save(buffer)
+        buffer.seek(0)
+        return FileResponse(
+            buffer,
+            as_attachment=True,
+            filename=f"workloads_{timezone.now().strftime('%Y-%m-%d')}.xlsx",
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+
 
 class LessonViewSet(RolePermissionMixin, viewsets.ModelViewSet):
     queryset = Lesson.objects.select_related('workload__study_group', 'workload__teacher', 'workload__subject', 'classroom', 'bell_schedule').all().order_by('id')
@@ -513,3 +573,48 @@ class LessonViewSet(RolePermissionMixin, viewsets.ModelViewSet):
             'group_conflicts': group_conflicts,
         }
         return Response(stats)
+
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        if not self.is_privileged(request):
+            raise PermissionDenied('Недостаточно прав для экспорта')
+        qs = self.get_queryset().select_related(
+            'workload__study_group',
+            'workload__subject',
+            'workload__teacher__profile',
+            'classroom',
+            'bell_schedule',
+        )[:10000]
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = 'Расписание'
+        headers = ['День недели', '№ урока', 'Время', 'Группа', 'Предмет', 'Учитель', 'Кабинет', 'Контрольная']
+        sheet.append(headers)
+        for cell in sheet[1]:
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill('solid', fgColor='D9D9D9')
+        week_days = dict(Lesson.WEEK_DAYS)
+        for lesson in qs:
+            bell = lesson.bell_schedule
+            sheet.append([
+                week_days.get(lesson.week_day, ''),
+                bell.lesson_number,
+                f'{bell.start_time:%H:%M}-{bell.end_time:%H:%M}',
+                lesson.workload.study_group.name,
+                lesson.workload.subject.title,
+                user_short_name(lesson.workload.teacher),
+                lesson.classroom.number,
+                'Да' if lesson.is_test else 'Нет',
+            ])
+        for index, column in enumerate(sheet.columns, start=1):
+            length = max(len('' if cell.value is None else str(cell.value)) for cell in column)
+            sheet.column_dimensions[get_column_letter(index)].width = length + 2
+        buffer = BytesIO()
+        workbook.save(buffer)
+        buffer.seek(0)
+        return FileResponse(
+            buffer,
+            as_attachment=True,
+            filename=f"lessons_{timezone.now().strftime('%Y-%m-%d')}.xlsx",
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )

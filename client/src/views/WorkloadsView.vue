@@ -1,7 +1,9 @@
 <script setup>
-import { ref, onBeforeMount } from 'vue';
+import { ref, computed, onBeforeMount } from 'vue';
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { storeToRefs } from 'pinia';
+import useProfileStore from '@/stores/profileStore';
 import { useCrud } from '@/composables/useCrud';
 import CrudPage from '@/components/CrudPage.vue';
 
@@ -10,9 +12,15 @@ onBeforeMount(() => {
 });
 
 const {
-  items, totalCount, currentPage, pageSize, stats, filters,
+  items, totalCount, currentPage, pageSize, stats, filters, search,
   users, selectedUserId, isSuperuser, fetchUsers, fetchData, fetchStats, onRemove
 } = useCrud('/api/workloads/');
+
+const { userRole } = storeToRefs(useProfileStore());
+
+const canExport = computed(() =>
+  isSuperuser.value || userRole.value === 1 || userRole.value === 2
+);
 
 const workloadStatsConfig = [
   { key: 'count', label: 'Всего' },
@@ -40,6 +48,25 @@ function setColumnFilter(key, value) {
     next[key] = Number(value);
   }
   filters.value = next;
+}
+
+async function exportToExcel() {
+  const params = { ...filters.value };
+  if (search.value) params.search = search.value;
+  if (selectedUserId.value) params.user = selectedUserId.value;
+  const response = await axios.get('/api/workloads/export/', {
+    params,
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  const today = new Date().toISOString().split('T')[0];
+  link.setAttribute('download', `workloads_${today}.xlsx`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 async function fetchSubjects() {
@@ -115,6 +142,12 @@ onBeforeMount(async () => {
     @update:selected-user-id="selectedUserId = $event"
     @update:current-page="currentPage = $event"
   >
+    <template #header-actions>
+      <button v-if="canExport" class="btn btn-success btn-sm" @click="exportToExcel">
+        <i class="bi bi-file-earmark-excel me-1"></i>Выгрузить в Excel
+      </button>
+    </template>
+
     <template #form>
       <div class="card shadow-sm mb-3 border-0">
         <div class="card-header bg-white border-bottom-0 pt-3">
